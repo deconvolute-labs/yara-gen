@@ -1,0 +1,88 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yara-gen"
+dynamic = ["version"]
+description = "Automated YARA rule generator for AI Security and Indirect Prompt Injection detection."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+authors = [
+  { name = "David Kirchhoff", email = "david@deconvoluteai.com" },
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "Intended Audience :: Science/Research",
+  "Topic :: Security",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "datasets>=4.5.0",
+  "jinja2>=3.1.6",
+  "pydantic>=2.0",
+  "scikit-learn>=1.8.0",
+]
+[project.urls]
+Homepage = "https://deconvoluteai.com"
+Repository = "https://github.com/deconvolute-labs/yara-gen"
+Issues = "https://github.com/deconvolute-labs/yara-gen/issues"
+
+[project.scripts]
+yara-gen = "yara_gen.main:main"
+ygen = "yara_gen.main:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0",
+  "pytest-cov>=7.0.0",
+  "ruff>=0.14.0",
+  "mypy>=1.0.0",
+  "git-cliff>=2.11.0",
+  "pytest-mock>=3.15.1",
+]
+
+[tool.hatch.version]
+path = "src/yara_gen/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yara_gen"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "S", "UP"] # pycodestyle, pyflakes, isort, bugbear
+ignore = [
+  "S101", # Ignore "assert" warnings (we use them in pytest)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests often use "magic values" or mock data that look like secrets
+"tests/**/*" = ["S105", "S106", "S101"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true  # Force you to write types for every function
+ignore_missing_imports = true # Prevents errors if a 3rd party lib has no types
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra -q --cov=yara_gen --cov-report=xml"
