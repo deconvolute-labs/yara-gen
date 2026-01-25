@@ -4,6 +4,16 @@ from pathlib import Path
 from yara_gen.adapters import ADAPTER_MAP
 
 
+def parse_filter_arg(filter_str: str | None) -> tuple[str | None, str | None]:
+    """Helper to parse 'col=val' string."""
+    if not filter_str:
+        return None, None
+    if "=" not in filter_str:
+        raise ValueError("Filter must be in 'column=value' format (e.g. 'label=1')")
+    key, val = filter_str.split("=", 1)
+    return key.strip(), val.strip()
+
+
 def parse_args() -> argparse.Namespace:
     available_adapters = ", ".join(sorted(ADAPTER_MAP.keys()))
 
@@ -51,6 +61,12 @@ def parse_args() -> argparse.Namespace:
             f"The parsing logic to use. Options: [{available_adapters}] "
             "(default: raw-text)"
         ),
+    )
+
+    parser_prepare.add_argument(
+        "--filter",
+        type=str,
+        help="Filter data in 'column=value' format (e.g. 'label=1').",
     )
 
     # Command: GENERATE
@@ -133,6 +149,12 @@ def parse_args() -> argparse.Namespace:
         action="append",
         dest="tags",
         help="Custom tags to add to generated rules (can be used multiple times)",
+    )
+
+    parser_generate.add_argument(
+        "--filter",
+        type=str,
+        help="Filter data in 'column=value' format (e.g. 'label=1').",
     )
 
     return parser.parse_args()

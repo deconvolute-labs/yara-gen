@@ -2,12 +2,13 @@ import json
 import sys
 
 from yara_gen.adapters import get_adapter
-from yara_gen.cli import parse_args
+from yara_gen.cli import parse_args, parse_filter_arg
 from yara_gen.extraction.factory import get_extractor
 from yara_gen.generation.writer import YaraWriter
 from yara_gen.models.config import BaseExtractorConfig, NgramConfig
 from yara_gen.models.text import DatasetType
 from yara_gen.utils.logger import setup_logger
+from yara_gen.utils.stream import filter_stream
 
 
 def main() -> None:
@@ -20,6 +21,12 @@ def main() -> None:
     logger = setup_logger(level=log_level)
     logger.debug(f"Logger initialized in {log_level} mode")
 
+    try:
+        filter_col, filter_val = parse_filter_arg(args.filter)
+    except ValueError as e:
+        logger.error(str(e))
+        sys.exit(1)
+
     # Dispatch logic
     if args.command == "prepare":
         logger.info(
@@ -29,6 +36,10 @@ def main() -> None:
         try:
             adapter = get_adapter(args.adapter, DatasetType.RAW)
             stream = adapter.load(args.input_path)
+
+            # Apply Universal Filter
+            if filter_col and filter_val:
+                stream = filter_stream(stream, filter_col, filter_val)
         except Exception as e:
             logger.error(f"Failed to initialize adapter: {e}")
             sys.exit(1)
@@ -62,34 +73,42 @@ def main() -> None:
         if args.engine == "ngram":
             logger.debug("Configuring N-Gram Engine parameters...")
             extractor_config = NgramConfig(
-                score_threshold=0.8,  # Could map from args.mode
+                score_threshold=0.8 if args.mode == "strict" else 0.4,
                 min_ngram_length=args.min_ngram,
                 max_ngram_length=args.max_ngram,
             )
         else:
-            # Fallback or error
             raise ValueError(f"Engine '{args.engine}' is not yet supported.")
+        try:
+            # Adversarial Stream
+            logger.info(f"Loading adversarial data from: {args.input_path}")
+            adv_adapter = get_adapter(args.adapter, DatasetType.ADVERSARIAL)
+            adv_stream = adv_adapter.load(args.input_path)
 
-        # Input Adapters
-        # Note: We pass the string arg directly to the loader
-        logger.info(f"Loading adversarial data from: {args.input_path}")
-        adv_adapter = get_adapter(args.adapter, DatasetType.ADVERSARIAL)
-        adv_stream = adv_adapter.load(args.input_path)
+            # Apply Universal Filter (Only to adversarial for now, usually)
+            if filter_col and filter_val:
+                adv_stream = filter_stream(adv_stream, filter_col, filter_val)
 
-        logger.info(f"Loading benign data from: {args.benign}")
-        benign_adapter = get_adapter(args.benign_adapter, DatasetType.BENIGN)
-        benign_stream = benign_adapter.load(args.benign)
+            logger.info(f"Loading benign data from: {args.benign}")
+            benign_adapter = get_adapter(args.benign_adapter, DatasetType.BENIGN)
+            benign_stream = benign_adapter.load(args.benign)
 
-        # Extraction
-        logger.info(f"Initializing extraction engine: {args.engine}")
-        extractor = get_extractor(args.engine, extractor_config)
-        rules = extractor.extract(adversarial=adv_stream, benign=benign_stream)
+            # Extraction
+            logger.info(f"Initializing extraction engine: {args.engine}")
+            extractor = get_extractor(args.engine, extractor_config)
+            rules = extractor.extract(adversarial=adv_stream, benign=benign_stream)
 
-        # Output Generation
-        writer = YaraWriter()
-        writer.write(rules, args.output)
+            # Output Generation
+            writer = YaraWriter()
+            writer.write(rules, args.output)
 
-        logger.info("Generation complete.")
+            if rules:
+                logger.info(f"Generation complete. Created {len(rules)} rules.")
+            else:
+                logger.warning("Generation complete, but NO rules were created.")
+        except Exception as e:
+            logger.error(f"Generation failed: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

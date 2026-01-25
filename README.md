@@ -1,10 +1,11 @@
 # Yara-Gen
-## Data-Driven YARA Rules from Adversarial and Benign Samples
 
 [![CI](https://github.com/deconvolute-labs/yara-gen/actions/workflows/ci.yml/badge.svg)](https://github.com/deconvolute-labs/yara-gen/actions/workflows/ci.yml)
 [![License](https://img.shields.io/pypi/l/yara-gen.svg)](https://pypi.org/project/yara-gen/)
 [![PyPI version](https://img.shields.io/pypi/v/yara-gen.svg?color=green)](https://pypi.org/project/yara-gen/)
 [![Supported Python version](https://img.shields.io/badge/python-3.13-blue.svg?)](https://pypi.org/project/yara-gen/)
+
+## Data-Driven YARA Rules from Adversarial and Benign Samples
 
 Yara-Gen is a data-driven YARA rule generator that learns detection rules from real adversarial examples. Instead of writing rules by hand, you provide known attack samples and a benign control set, and the tool produces high-signal YARA rules with low false positive rates.
 

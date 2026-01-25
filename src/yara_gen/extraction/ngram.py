@@ -77,6 +77,9 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
         adv_samples = list(adversarial)
         benign_samples = list(benign)
 
+        logger.info(f"Found {len(adv_samples)} adversarial samples.")
+        logger.info(f"Found {len(benign_samples)} benign samples.")
+
         adv_texts: list[str] = [s.text for s in adv_samples]
         benign_texts: list[str] = [s.text for s in benign_samples]
         n_adv = len(adv_texts)
