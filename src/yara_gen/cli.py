@@ -175,7 +175,10 @@ def parse_args() -> argparse.Namespace:
     parser_generate.add_argument(
         "--filter",
         type=str,
-        help="Filter data in 'column=value' format (e.g. 'label=1').",
+        help=(
+            "Filter applied to adversarial data in 'column=value' format "
+            "(e.g. 'label=1')."
+        ),
     )
 
     return parser.parse_args()
