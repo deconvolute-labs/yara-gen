@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from yara_gen.constants import NGramSettings
+
 
 class BaseExtractorConfig(BaseModel):
     """
@@ -19,3 +21,4 @@ class NgramConfig(BaseExtractorConfig):
     max_ngram_length: int = 10
     # The penalty lambda for benign matches
     benign_penalty_weight: float = 1.0
+    min_document_frequency: float = NGramSettings.MIN_DOCUMENT_FREQ

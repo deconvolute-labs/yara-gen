@@ -98,5 +98,5 @@ class JSONLAdapter(BaseAdapter):
 
         logger.info(
             f"Loaded {success_count} samples from {source.name} "
-            "(Skipped {error_count} errors)"
+            f"(Skipped {error_count} errors)"
         )
