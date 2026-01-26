@@ -59,6 +59,7 @@ packages = ["src/yara_gen"]
 line-length = 88
 target-version = "py313"
 src = ["src", "tests"]
+exclude = ["scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "S", "UP"] # pycodestyle, pyflakes, isort, bugbear
@@ -77,6 +78,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true  # Force you to write types for every function
 ignore_missing_imports = true # Prevents errors if a 3rd party lib has no types
+exclude = ["scripts"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
