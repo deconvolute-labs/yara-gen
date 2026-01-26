@@ -106,7 +106,7 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
                 self.config.min_ngram_length,
                 self.config.max_ngram_length,
             ),
-            min_df=0.01,
+            min_df=self.config.min_document_frequency,
             binary=True,  # We care about presence (Document Freq), not Count.
             lowercase=True,
             analyzer="word",
@@ -145,6 +145,18 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
         # Ratios (A/B) are unstable for small denominators. Subtraction provides a
         # linear penalty that is easier to reason about.
         scores = freq_adv - (self.config.benign_penalty_weight * freq_benign)
+
+        max_score = np.max(scores) if len(scores) > 0 else 0.0
+        avg_score = np.mean(scores) if len(scores) > 0 else 0.0
+
+        logger.info(f"Score Distribution: Max={max_score:.4f}, Mean={avg_score:.4f}")
+
+        if max_score < self.config.score_threshold:
+            logger.warning(
+                f"Highest scoring candidate ({max_score:.4f}) is below the "
+                f"configured threshold ({self.config.score_threshold}). "
+                "No rules will be generated. Try using --mode loose or --threshold."
+            )
 
         # Filter by threshold immediately to reduce data size
         threshold_mask = scores >= self.config.score_threshold

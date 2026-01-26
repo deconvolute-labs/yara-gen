@@ -15,3 +15,9 @@ class AdapterType(str, Enum):
     JSONL = "jsonl"
     GENERIC_CSV = "generic-csv"
     HUGGINGFACE = "huggingface"
+
+
+class NGramSettings(float, Enum):
+    THRESHOLD_STRICT = 0.1
+    THRESHOLD_LOOSE = 0.01
+    MIN_DOCUMENT_FREQ = 0.01

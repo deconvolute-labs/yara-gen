@@ -5,14 +5,14 @@ import sys
 from pathlib import Path
 
 from yara_gen.adapters import ADAPTER_MAP, get_adapter
-from yara_gen.constants import AdapterType, EngineType
+from yara_gen.constants import AdapterType, EngineType, NGramSettings
 from yara_gen.extraction.factory import get_extractor
 from yara_gen.generation.writer import YaraWriter
 from yara_gen.models.config import BaseExtractorConfig, NgramConfig
 from yara_gen.models.text import DatasetType
 from yara_gen.utils.args import parse_filter_arg
 from yara_gen.utils.deduplication import parse_existing_rules
-from yara_gen.utils.logger import get_logger
+from yara_gen.utils.logger import get_logger, log_run_config
 from yara_gen.utils.stream import filter_stream
 
 logger = get_logger()
@@ -127,6 +127,19 @@ def register_args(
         ),
     )
 
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        help="Override the score threshold (0.0-1.0). Overrides --mode defaults.",
+    )
+
+    parser.add_argument(
+        "--min-df",
+        type=float,
+        default=NGramSettings.MIN_DOCUMENT_FREQ,
+        help="Minimum document frequency (percentage 0.0-1.0 or integer count).",
+    )
+
 
 def run(args: argparse.Namespace) -> None:
     try:
@@ -140,13 +153,36 @@ def run(args: argparse.Namespace) -> None:
     # Build the specific Configuration based on Engine selection
     extractor_config: BaseExtractorConfig
 
+    # Determine threshold
+    if args.threshold is not None:
+        chosen_threshold = args.threshold
+    else:
+        chosen_threshold = (
+            NGramSettings.THRESHOLD_STRICT
+            if args.mode == "strict"
+            else NGramSettings.THRESHOLD_LOOSE
+        )
+
+    thresh_value = (
+        chosen_threshold.value
+        if isinstance(chosen_threshold, NGramSettings)
+        else chosen_threshold
+    )
+
+    extra_config = {
+        "calculated_threshold": thresh_value,
+        "threshold_source": "Override" if args.threshold else "Default",
+    }
+    log_run_config(logger, args, extra_config)
+
     if args.engine == EngineType.NGRAM.value:
         logger.debug("Configuring N-Gram Engine parameters...")
         extractor_config = NgramConfig(
-            score_threshold=0.1 if args.mode == "strict" else 0.01,
+            score_threshold=chosen_threshold,
             min_ngram_length=args.min_ngram,
             max_ngram_length=args.max_ngram,
             rule_date=args.rule_date,
+            min_document_frequency=args.min_df,
         )
     else:
         # Placeholder for other engines if implemented

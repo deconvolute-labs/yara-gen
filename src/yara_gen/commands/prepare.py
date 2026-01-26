@@ -9,7 +9,7 @@ from yara_gen.adapters import ADAPTER_MAP, get_adapter
 from yara_gen.constants import AdapterType
 from yara_gen.models.text import DatasetType
 from yara_gen.utils.args import parse_filter_arg
-from yara_gen.utils.logger import get_logger
+from yara_gen.utils.logger import get_logger, log_run_config
 from yara_gen.utils.stream import filter_stream
 
 logger = get_logger()
@@ -79,6 +79,8 @@ def run(args: argparse.Namespace) -> None:
     except ValueError as e:
         logger.error(str(e))
         sys.exit(1)
+
+    log_run_config(logger, args)
 
     logger.info(
         f"Preparing data from {args.input_path} using adapter '{args.adapter}'..."

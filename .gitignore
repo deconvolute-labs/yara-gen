@@ -118,3 +118,4 @@ cython_debug/
 dev/
 data/*
 !data/control.jsonl
+logs/
