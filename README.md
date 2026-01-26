@@ -7,34 +7,9 @@
 
 ## Data-Driven YARA Rules from Adversarial and Benign Samples
 
-Yara-Gen is a data-driven YARA rule generator that learns detection rules from real adversarial examples. Instead of writing rules by hand, you provide known attack samples and a benign control set, and the tool produces high-signal YARA rules with low false positive rates.
+Yara-Gen automatically generates YARA rules from adversarial and benign text datasets. It produces compact, high-precision rules that integrate with the [Deconvolute SDK](https://github.com/deconvolute-labs/deconvolute) for prompt injection and AI system security.
 
-The generated rules are compatible with standard YARA engines and are designed to integrate directly with the [Deconvolute SDK](https://github.com/deconvolute-labs/deconvolute) for production-grade (indirect) prompt injection defense.
-
-
-## What Problem This Solves
-
-Writing YARA rules by hand does not scale for modern AI systems.
-
-Prompt injection attacks evolve quickly, often appear in many variants, and share subtle patterns that are easy to miss. At the same time, naive pattern matching leads to high false positive rates when deployed in production systems.
-
-Yara-Gen addresses this by:
-- Learning signatures directly from adversarial datasets
-- Filtering those signatures against large benign corpora
-- Producing compact, high-signal YARA rules you can deploy immediately
-
-You bring the data. The tool creates the rules for you.
-
-
-## Core Concept: Two-Step Workflow
-
-Yara-Gen operates in two stages:
-1. Prepare
-Normalize large benign datasets into a fast, consistent JSONL format.
-2. Generate
-Extract YARA rules from adversarial samples while filtering against the benign control set.
-
-For small datasets, you can skip prepare. For large corpora, it significantly improves performance and consistency.
+For a detailed explanation of the algorithm and design choices, see the [blog post](https://deconvoluteai.com/blog/yara-rules-llm-prompt-security?utm_source=github&utm_campaign=yara-gen&utm_medium=readme-top).
 
 
 ## Installation
@@ -62,18 +37,14 @@ ygen generate rubend18/ChatGPT-Jailbreak-Prompts \
   --output ./data/jailbreak_signatures.yar
 ```
 
-This produces a standard `.yar` file ready to be loaded into a YARA engine or the [Deconvolute SDK](https://github.com/deconvolute-labs/deconvolute).
+The output `.yar` file is ready to load into any YARA engine or the [Deconvolute SDK](https://github.com/deconvolute-labs/deconvolute).
 
 
 ## Commands Overview
 
 ### ygen prepare
 
-Converts raw text or structured data into normalized JSONL. This is intended for large benign datasets such as documentation, emails, logs, or web corpora.
-
-Use this when your control set is large or expensive to parse repeatedly.
-
-**Example**
+Prepares large benign datasets for efficient rule generation. Use this when your control set is large or expensive to parse repeatedly.
 
 ```bash
 ygen prepare ./data/emails.csv \
@@ -83,16 +54,7 @@ ygen prepare ./data/emails.csv \
 
 ### ygen generate
 
-Generates YARA rules from adversarial inputs and validates them against a benign control set.
-
-This is the main command you will use.
-
-Required inputs
-- An adversarial dataset
-- A benign control dataset
-- An output path for the generated rules
-
-**Example**
+Generates YARA rules from adversarial inputs and validates against a benign control set. This is the main command you will use.
 
 ```bash
 ygen generate ./data/jailbreaks.csv \
@@ -102,11 +64,9 @@ ygen generate ./data/jailbreaks.csv \
 ```
 
 ## Common Workflows
-Some common workflows are the following.
 
-### Using large benign corpora
+**Using large benign corpora:** Prepare once, reuse across rule generations.
 
-Prepare the benign dataset once, then reuse it across multiple rule generations.
 
 ```bash
 ygen prepare wiki_dump.xml \
@@ -114,9 +74,7 @@ ygen prepare wiki_dump.xml \
   --output benign_wikipedia.jsonl
 ```
 
-### Iterating on Existing YARA Rules
-
-Avoid regenerating signatures that are already covered.
+**Iterating on existing rules:** Avoid regenerating already-covered signatures.
 
 ```bash
 ygen generate attacks.csv \
@@ -125,7 +83,7 @@ ygen generate attacks.csv \
   --output updated_rules.yar
 ```
 
-### Tuning Sensitivity
+**Tuning Sensitivity**
 
 Control how aggressive the rule generation should be.
 - `strict`: fewer rules, lower false positive rate
@@ -138,16 +96,6 @@ ygen generate attacks.csv \
   --output rules.yar
 ```
 
-## Engines
-
-Engines define how signatures are extracted from data.
-
-The default engine is *ngram*, which identifies statistically significant phrases that appear frequently in attack samples but rarely in benign text. This approach works well for prompt injection and similar payload-based attacks, where malicious intent often shows up as repeated linguistic patterns.
-
-Yara-Gen supports pluggable engines, and additional engines can be added over time.
-
-For a detailed explanation of the N-gram engine design and trade-offs, see the technical blog post here: TODO.
-
 ## Output and Compatibility
 
 Yara-Gen produces standard `.yar` files that:
@@ -158,10 +106,9 @@ Yara-Gen produces standard `.yar` files that:
 No proprietary runtime is required.
 
 
-
 ## Integration with Deconvolute SDK
 
-Yara-Gen is designed to work seamlessly with the Deconvolute security suite. The primary use case is generating high-quality rules that can be deployed directly into Deconvolute detectors which can then be used like this for example:
+Rules generated by Yara-Gen can be deployed directly into Deconvolute detectors which can then be used like this for example:
 
 ```python
 from deconvolute import scan
@@ -172,8 +119,8 @@ if result.threat_detected:
     print(f"Threat detected: {result.component}")
 ```
 
-This allows you to block or flag adversarial inputs before they reach sensitive parts of your AI system.
+This allows blocking or flagging adversarial inputs before they reach sensitive parts of your AI system.
 
 ## Further Reading
-- Engine design and algorithm details: TODO
-- Deconvolute SDK: https://github.com/deconvolute-labs/deconvolute
+- Algorithm and engine design [blog post](https://deconvoluteai.com/blog/yara-rules-llm-prompt-security?utm_source=github&utm_campaign=yara-gen&utm_medium=readme-further-reading)
+- Deconvolute SDK [source code](https://github.com/deconvolute-labs/deconvolute)
