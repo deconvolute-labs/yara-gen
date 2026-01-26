@@ -47,12 +47,17 @@ class HuggingFaceAdapter(BaseAdapter):
         repo_id = str(source)
         target_column = kwargs.get("column", "text")
         split = kwargs.get("split", "train")
+        config_name = kwargs.get("config_name")
 
-        logger.info(f"Streaming {repo_id} (split='{split}', col='{target_column}')...")
+        log_msg = f"Streaming {repo_id}"
+        if config_name:
+            log_msg += f" (config='{config_name}')"
+        log_msg += f" (split='{split}', col='{target_column}')..."
+        logger.info(log_msg)
 
         try:
             # streaming=True is critical for large datasets
-            ds = load_dataset(repo_id, split=split, streaming=True)
+            ds = load_dataset(repo_id, name=config_name, split=split, streaming=True)
         except Exception as e:
             logger.error(f"Failed to load HF dataset '{repo_id}': {e}")
             raise ValueError(f"Could not load Hugging Face dataset: {e}") from e
