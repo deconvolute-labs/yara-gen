@@ -2,6 +2,7 @@ from enum import Enum
 
 META_AUTHOR = "Deconvolute Labs"
 META_DESC = "Auto-generated rule for Deconvolute SDK security suite."
+LOGGER_NAME = "yara-gen"
 
 
 class EngineType(str, Enum):

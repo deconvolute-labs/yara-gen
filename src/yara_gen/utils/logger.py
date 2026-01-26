@@ -1,11 +1,13 @@
 import logging
 import sys
 
+from yara_gen.constants import LOGGER_NAME
+
 LOG_FORMAT = "[%(levelname)s] %(asctime)s %(message)s"
 DATE_FORMAT = "%H:%M:%S"
 
 
-def setup_logger(name: str = "yara-gen", level: str = "INFO") -> logging.Logger:
+def setup_logger(name: str = LOGGER_NAME, level: str = "INFO") -> logging.Logger:
     """
     Configures and returns a centralized logger.
     """
@@ -34,7 +36,7 @@ def setup_logger(name: str = "yara-gen", level: str = "INFO") -> logging.Logger:
     return logger
 
 
-def get_logger(name: str = "yara-rule-gen") -> logging.Logger:
+def get_logger(name: str = LOGGER_NAME) -> logging.Logger:
     """
     Helper to get the logger in other modules without re-configuring.
     """

@@ -143,7 +143,7 @@ def run(args: argparse.Namespace) -> None:
     if args.engine == EngineType.NGRAM.value:
         logger.debug("Configuring N-Gram Engine parameters...")
         extractor_config = NgramConfig(
-            score_threshold=0.8 if args.mode == "strict" else 0.4,
+            score_threshold=0.1 if args.mode == "strict" else 0.01,
             min_ngram_length=args.min_ngram,
             max_ngram_length=args.max_ngram,
             rule_date=args.rule_date,
