@@ -7,6 +7,7 @@ from yara_gen.extraction.factory import get_extractor
 from yara_gen.generation.writer import YaraWriter
 from yara_gen.models.config import BaseExtractorConfig, NgramConfig
 from yara_gen.models.text import DatasetType
+from yara_gen.utils.deduplication import parse_existing_rules
 from yara_gen.utils.logger import setup_logger
 from yara_gen.utils.stream import filter_stream
 
@@ -101,6 +102,36 @@ def main() -> None:
             logger.info(f"Initializing extraction engine: {args.engine}")
             extractor = get_extractor(args.engine, extractor_config)
             rules = extractor.extract(adversarial=adv_stream, benign=benign_stream)
+
+            # Deduplication
+            if args.existing_rules:
+                if args.existing_rules.exists():
+                    logger.info(
+                        f"Deduplicating against existing rules: {args.existing_rules}"
+                    )
+                    existing_payloads = parse_existing_rules(args.existing_rules)
+
+                    initial_count = len(rules)
+                    # Filter out rules where ANY of their strings exist in the known set
+                    rules = [
+                        r
+                        for r in rules
+                        if not any(s.value in existing_payloads for s in r.strings)
+                    ]
+
+                    dropped_count = initial_count - len(rules)
+                    if dropped_count > 0:
+                        logger.info(
+                            f"Deduplication complete. Dropped {dropped_count} "
+                            "duplicate rules."
+                        )
+                    else:
+                        logger.debug("Deduplication complete. No duplicates found.")
+                else:
+                    logger.warning(
+                        f"Existing rules file not found: {args.existing_rules}. "
+                        "Skipping deduplication."
+                    )
 
             # Output Generation
             writer = YaraWriter()
