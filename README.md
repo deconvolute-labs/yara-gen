@@ -5,6 +5,8 @@
 [![PyPI version](https://img.shields.io/pypi/v/yara-gen.svg?color=green)](https://pypi.org/project/yara-gen/)
 [![Supported Python version](https://img.shields.io/badge/python-3.13-blue.svg?)](https://pypi.org/project/yara-gen/)
 
+⚠️ Alpha version - hyperparameters and API might change
+
 ## Data-Driven YARA Rules from Adversarial and Benign Samples
 
 Yara-Gen automatically generates YARA rules from adversarial and benign text datasets. It produces compact, high-precision rules that integrate with the [Deconvolute SDK](https://github.com/deconvolute-labs/deconvolute) for prompt injection and AI system security.
