@@ -30,7 +30,7 @@ class TestHuggingFaceAdapter:
 
         # Verify call args
         mock_load_dataset.assert_called_with(
-            "deepset/test-dataset", split="train", streaming=True
+            "deepset/test-dataset", name=None, split="train", streaming=True
         )
 
     def test_load_with_custom_column_and_split(self, adapter, mocker):
@@ -44,7 +44,7 @@ class TestHuggingFaceAdapter:
         assert len(samples) == 1
         assert samples[0].text == "malicious payload"
         mock_load_dataset.assert_called_with(
-            "user/repo", split="validation", streaming=True
+            "user/repo", name=None, split="validation", streaming=True
         )
 
     def test_fallback_to_prompt_column(self, adapter, mocker):
@@ -65,3 +65,20 @@ class TestHuggingFaceAdapter:
 
         with pytest.raises(ValueError, match="Could not load Hugging Face dataset"):
             list(adapter.load("bad/repo"))
+
+    def test_load_with_config_name(self, adapter, mocker):
+        """Test loading with a specific config name."""
+        mock_data = [{"text": "config sample"}]
+        mock_load_dataset = mocker.patch("yara_gen.adapters.huggingface.load_dataset")
+        mock_load_dataset.return_value = mock_data
+
+        samples = list(adapter.load("user/multi-config-repo", config_name="subset_v2"))
+
+        assert len(samples) == 1
+        assert samples[0].text == "config sample"
+        mock_load_dataset.assert_called_with(
+            "user/multi-config-repo",
+            name="subset_v2",
+            split="train",
+            streaming=True,
+        )

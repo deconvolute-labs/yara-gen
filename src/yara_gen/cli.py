@@ -64,6 +64,21 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser_prepare.add_argument(
+        "--config-name",
+        type=str,
+        help=(
+            "Configuration name for datasets with multiple subsets "
+            "(e.g. HuggingFace configs)."
+        ),
+    )
+
+    parser_prepare.add_argument(
+        "--limit",
+        type=int,
+        help="Limit the number of samples to process (useful for debugging).",
+    )
+
+    parser_prepare.add_argument(
         "--filter",
         type=str,
         help="Filter data in 'column=value' format (e.g. 'label=1').",
@@ -88,6 +103,12 @@ def parse_args() -> argparse.Namespace:
             f"Adapter for adversarial input. Options: [{available_adapters}] "
             "(default: jsonl)"
         ),
+    )
+
+    parser_generate.add_argument(
+        "--config-name",
+        type=str,
+        help="Configuration name for adversarial dataset (e.g. HuggingFace configs).",
     )
 
     parser_generate.add_argument(

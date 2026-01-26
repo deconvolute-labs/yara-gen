@@ -35,7 +35,7 @@ def main() -> None:
         # Initialize Adapter (forcing RAW type)
         try:
             adapter = get_adapter(args.adapter, DatasetType.RAW)
-            stream = adapter.load(args.input_path)
+            stream = adapter.load(args.input_path, config_name=args.config_name)
 
             # Apply Universal Filter
             if filter_col and filter_val:
@@ -58,6 +58,10 @@ def main() -> None:
 
                     if count % 5000 == 0:
                         logger.debug(f"Processed {count} samples...")
+
+                    if args.limit and count >= args.limit:
+                        logger.info(f"Reached limit of {args.limit} samples.")
+                        break
 
             logger.info(f"Successfully wrote {count} samples to {args.output}")
 
@@ -83,7 +87,7 @@ def main() -> None:
             # Adversarial Stream
             logger.info(f"Loading adversarial data from: {args.input_path}")
             adv_adapter = get_adapter(args.adapter, DatasetType.ADVERSARIAL)
-            adv_stream = adv_adapter.load(args.input_path)
+            adv_stream = adv_adapter.load(args.input_path, config_name=args.config_name)
 
             # Apply Universal Filter (Only to adversarial for now, usually)
             if filter_col and filter_val:
