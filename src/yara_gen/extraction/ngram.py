@@ -181,7 +181,10 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
         # 7. Convert to GeneratedRule objects
         return [
             RuleBuilder.build_from_ngram(
-                text=c["text"], score=c["score"], source=source_name
+                text=c["text"],
+                score=c["score"],
+                source=source_name,
+                rule_date=self.config.rule_date,
             )
             for c in selected_candidates
         ]

@@ -13,7 +13,9 @@ class RuleBuilder:
     """
 
     @staticmethod
-    def build_from_ngram(text: str, score: float, source: str) -> GeneratedRule:
+    def build_from_ngram(
+        text: str, score: float, source: str, rule_date: str | None = None
+    ) -> GeneratedRule:
         """
         Creates a GeneratedRule from a raw n-gram candidate.
 
@@ -21,6 +23,7 @@ class RuleBuilder:
             text: The n-gram string (e.g. "ignore previous instructions").
             score: The calculated safety score.
             source: The dataset source name.
+            rule_date: Optional fixed date string. Defaults to today.
 
         Returns:
             A fully formed GeneratedRule object with rich metadata.
@@ -55,7 +58,7 @@ class RuleBuilder:
             metadata={
                 "author": META_AUTHOR,
                 "description": META_DESC,
-                "date": date.today().isoformat(),
+                "date": rule_date or date.today().isoformat(),
                 "source": source,
                 "score": str(score_val),
             },

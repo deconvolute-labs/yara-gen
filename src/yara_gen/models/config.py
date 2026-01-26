@@ -7,6 +7,7 @@ class BaseExtractorConfig(BaseModel):
     """
 
     score_threshold: float = 0.8
+    rule_date: str | None = None
 
 
 class NgramConfig(BaseExtractorConfig):
