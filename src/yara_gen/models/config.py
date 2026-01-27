@@ -1,3 +1,5 @@
+from typing import Annotated, Literal
+
 from pydantic import BaseModel, Field
 
 from yara_gen.constants import EngineConstants
@@ -8,13 +10,10 @@ class BaseEngineConfig(BaseModel):
     Base configuration shared by all engines.
     """
 
-    # The actual score threshold to use for this run.
-    # Users can overwrite this directly to bypass "strict/loose" defaults.
+    type: Literal["ngram", "stub"]
+
     score_threshold: float = EngineConstants.THRESHOLD_STRICT.value
-
-    # Limits the number of rules generated to prevent flooding.
     max_rules_per_run: int = EngineConstants.MAX_RULES_PER_RUN.value
-
     rule_date: str | None = None
 
     # Allow extra fields for engine-specific overrides (like min_ngram)
@@ -27,6 +26,8 @@ class NgramEngineConfig(BaseEngineConfig):
     Configuration specific to the Differential N-Gram Engine.
     """
 
+    type: Literal["ngram"] = "ngram"
+
     min_ngram: int = EngineConstants.DEFAULT_MIN_NGRAM.value
     max_ngram: int = EngineConstants.DEFAULT_MAX_NGRAM.value
 
@@ -34,6 +35,19 @@ class NgramEngineConfig(BaseEngineConfig):
     benign_penalty_weight: float = EngineConstants.DEFAULT_BENIGN_PENALTY.value
 
     min_document_frequency: float = EngineConstants.MIN_DOCUMENT_FREQ.value
+
+
+class StubEngineConfig(BaseEngineConfig):
+    """
+    Configuration for the Stub engine (mostly for testing/dry-runs).
+    """
+
+    type: Literal["stub"] = "stub"
+
+
+EngineConfig = Annotated[
+    NgramEngineConfig | StubEngineConfig, Field(discriminator="type")
+]
 
 
 class AdapterConfig(BaseModel):
@@ -59,5 +73,4 @@ class AppConfig(BaseModel):
     adversarial_adapter: AdapterConfig = Field(default_factory=AdapterConfig)
     benign_adapter: AdapterConfig = Field(default_factory=AdapterConfig)
 
-    # BaseEngineConfig here to allow loading the YAML structure
-    engine: BaseEngineConfig = Field(default_factory=BaseEngineConfig)
+    engine: EngineConfig = Field(default_factory=NgramEngineConfig)

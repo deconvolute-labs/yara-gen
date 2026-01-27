@@ -2,7 +2,7 @@ from datetime import datetime
 
 from yara_gen.cli.args import parse_args
 from yara_gen.cli.commands import generate, prepare
-from yara_gen.utils.logger import setup_logger
+from yara_gen.utils.logger import log_header, setup_logger
 
 
 def main() -> None:
@@ -24,6 +24,12 @@ def main() -> None:
 
     log_level = "DEBUG" if getattr(args, "verbose", False) else "INFO"
     logger = setup_logger(level=log_level, log_file=log_path)
+
+    # Logs
+    if args.command == "prepare":
+        log_header(logger, title="YARA Gen - Data Preparation")
+    elif args.command == "generate":
+        log_header(logger, title="YARA Gen - Rule Generation")
     logger.debug(f"Logger initialized in {log_level} mode")
     logger.info(f"Logging to file: {log_path}")
 

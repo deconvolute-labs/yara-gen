@@ -9,10 +9,15 @@ from typing import Any
 from yara_gen.adapters import ADAPTER_MAP, get_adapter
 from yara_gen.constants import AdapterType
 from yara_gen.errors import ConfigurationError, DataError
+from yara_gen.models.config import AdapterConfig
 from yara_gen.models.text import DatasetType
 from yara_gen.utils.args import parse_filter_arg
 from yara_gen.utils.config import apply_overrides
-from yara_gen.utils.logger import get_logger, log_run_config
+from yara_gen.utils.logger import (
+    get_logger,
+    log_config,
+    log_named_value,
+)
 from yara_gen.utils.stream import filter_stream
 
 logger = get_logger()
@@ -76,37 +81,51 @@ def run(args: argparse.Namespace) -> None:
         logger.error(str(e))
         sys.exit(1)
 
-    # Initialize empty config structure for the adapter
-    config: dict[str, Any] = {"adapter": {}}
+    # Initialize configuration structure
+    # We start with the CLI arg for the type
+    raw_config: dict[str, Any] = {"type": args.adapter}
 
     # Apply Dot-Notation Overrides (--set adapter.config_name=foo)
     try:
-        config = apply_overrides(config, getattr(args, "set", None))
+        raw_config = apply_overrides(raw_config, getattr(args, "set", None))
+        if "adapter" in raw_config and isinstance(raw_config["adapter"], dict):
+            raw_config.update(raw_config.pop("adapter"))
     except ConfigurationError as e:
         logger.error(f"Configuration Error: {e}")
         sys.exit(1)
 
-    # Extract the dictionary specifically for the adapter
-    adapter_kwargs = config.get("adapter", {})
+    try:
+        adapter_config = AdapterConfig(**raw_config)
+    except Exception as e:
+        logger.error(f"Adapter Configuration Error: {e}")
+        sys.exit(1)
 
-    log_run_config(logger, args, {"adapter_kwargs": adapter_kwargs})
-    logger.debug(f"Using config: {config}")
-    logger.debug(f"Using adapter args: {adapter_kwargs}")
-    logger.info(f"Preparing data from {args.input} using adapter '{args.adapter}' ...")
+    log_named_value(logger, "Input", args.input)
+    log_named_value(logger, "Output", args.output)
+
+    if args.limit:
+        log_named_value(logger, "Limit", args.limit)
+    if filter_col:
+        log_named_value(logger, "Filter", f"{filter_col} == {filter_val}")
+
+    log_config(logger, adapter_config.model_dump())
+
+    logger.info(
+        f"Preparing data from {args.input} using adapter '{adapter_config.type}' ..."
+    )
 
     try:
-        # Initialize Adapter
-        # Catch ValueError if the adapter name is typo-ed
         try:
             adapter = get_adapter(args.adapter, DatasetType.RAW)
         except ValueError as e:
             logger.error(f"Adapter selection failed: {e}")
             sys.exit(1)
 
-        # Load stream
-        # Catch DataError if the file is missing or HF is down
         try:
-            stream = adapter.load(args.input, **adapter_kwargs)
+            # We exclude 'type' because load() usually expects kwargs for the internal
+            # logic (like chunk_size, delimiter, etc), not the factory type string.
+            load_kwargs = adapter_config.model_dump(exclude={"type"})
+            stream = adapter.load(args.input, **load_kwargs)
         except (DataError, FileNotFoundError) as e:
             logger.error(f"Data Loading Error: {e}")
             sys.exit(1)

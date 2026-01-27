@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from yara_gen.adapters import ADAPTER_MAP, get_adapter
-from yara_gen.constants import AdapterType, EngineType
+from yara_gen.constants import DEFAULT_RULE_FILENAME, EngineType
 from yara_gen.engine.factory import get_engine
 from yara_gen.errors import ConfigurationError, DataError
 from yara_gen.generation.writer import YaraWriter
@@ -13,7 +13,11 @@ from yara_gen.models.config import AppConfig
 from yara_gen.models.text import DatasetType
 from yara_gen.utils.config import apply_overrides, load_config
 from yara_gen.utils.deduplication import parse_existing_rules
-from yara_gen.utils.logger import get_logger, log_run_config
+from yara_gen.utils.logger import (
+    get_logger,
+    log_config,
+    log_named_value,
+)
 
 logger = get_logger()
 
@@ -103,7 +107,6 @@ def register_args(
 
 def run(args: argparse.Namespace) -> None:
     try:
-        # Load Base Config from YAML
         # args.config comes from the parent parser in cli/args.py
         config_path = getattr(args, "config", Path("config.yaml"))
         logger.info(f"Loading configuration from: {config_path}")
@@ -144,27 +147,27 @@ def run(args: argparse.Namespace) -> None:
         # This converts the dict into strict Pydantic models
         app_config = AppConfig(**raw_config)
 
-        # Extract types for factories (defaulting to constants if missing)
-        # We access the raw dictionary or extra fields for 'type' since it might not
-        # be explicit in BaseEngineConfig
-        engine_type = raw_config.get("engine", {}).get("type") or EngineType.NGRAM.value
-        adv_adapter_type = (
-            raw_config.get("adversarial_adapter", {}).get("type")
-            or AdapterType.JSONL.value
-        )
-        benign_adapter_type = (
-            raw_config.get("benign_adapter", {}).get("type") or AdapterType.JSONL.value
+        log_named_value(logger, "Adversarial", args.input)
+        log_named_value(logger, "Benign", args.benign_dataset)
+        log_named_value(
+            logger, "Output", app_config.output_path or DEFAULT_RULE_FILENAME
         )
 
-        # Log the final resolved configuration for debugging
-        log_run_config(logger, args, app_config.model_dump())
-        logger.debug(f"Using config: {app_config.model_dump_json()}")
-        logger.debug(f"Using engine config: {app_config.engine}")
+        # Log the deep configuration
+        log_config(logger, app_config.model_dump())
+
+        # Extract types for factories
+        # We can now trust app_config.engine.type because it is strictly validated
+        engine_type = app_config.engine.type
+
+        adv_adapter_type = app_config.adversarial_adapter.type
+        benign_adapter_type = app_config.benign_adapter.type
+
         logger.info(f"Starting generation with Engine: {engine_type}")
 
         # Initialize Components
         try:
-            engine = get_engine(engine_type, app_config.engine)
+            engine = get_engine(app_config.engine)
             adv_adapter = get_adapter(adv_adapter_type, DatasetType.ADVERSARIAL)
             benign_adapter = get_adapter(benign_adapter_type, DatasetType.BENIGN)
         except ValueError as e:
@@ -184,7 +187,9 @@ def run(args: argparse.Namespace) -> None:
 
             benign_path = args.benign_dataset
             if not benign_path:
-                raise ConfigurationError("No benign dataset path provided (--benign).")
+                raise ConfigurationError(
+                    "No benign dataset path provided (--benign-dataset)."
+                )
 
             logger.info(f"Loading benign data: {benign_path}")
             benign_stream = benign_adapter.load(
@@ -222,7 +227,7 @@ def run(args: argparse.Namespace) -> None:
                 )
 
         # Output Generation
-        output_file = app_config.output_path or "generated_rules.yar"
+        output_file = app_config.output_path or DEFAULT_RULE_FILENAME
         try:
             writer = YaraWriter()
             writer.write(rules, Path(output_file))

@@ -8,7 +8,7 @@ from yara_gen.models.text import DatasetType, TextSample
 class TestStubEngine:
     @pytest.fixture
     def engine(self):
-        config = BaseEngineConfig()
+        config = BaseEngineConfig(type="stub")
         return StubEngine(config)
 
     def test_stub_returns_placeholder_rule(self, engine):
