@@ -4,7 +4,9 @@ from typing import Any
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 
+from yara_gen.constants import EngineConstants
 from yara_gen.engine.base import BaseExtractor
+from yara_gen.errors import DataError
 from yara_gen.generation.builder import RuleBuilder
 from yara_gen.models.config import NgramConfig
 from yara_gen.models.text import GeneratedRule, TextSample
@@ -116,10 +118,12 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
         try:
             # Fit on adversarial to find candidates
             X_adv = vectorizer.fit_transform(adv_texts)
-        except ValueError:
+        except ValueError as e:
             # Usually happens if vocabulary is empty (e.g. documents too short)
-            logger.warning("No n-grams met the frequency threshold.")
-            return []
+            raise DataError(
+                "No n-grams met the frequency threshold. "
+                "The adversarial dataset might be too small or too diverse."
+            ) from e
 
         feature_names = vectorizer.get_feature_names_out()
         logger.info(f"Analyzed {len(feature_names)} candidate n-grams.")
@@ -259,9 +263,6 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
         covered_mask = np.zeros(total_samples, dtype=bool)
         selected: list[dict[str, Any]] = []
 
-        # We limit the max rules to avoid massive files, but allow up to 50 for now
-        MAX_RULES = 50
-
         # Pre-compute the column vectors for our filtered candidates to avoid sparse
         # indexing in loop
         # Format: {candidate_idx_in_list: dense_boolean_array}
@@ -271,7 +272,7 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
             # Convert sparse column to dense boolean array for fast masking
             candidate_vectors[i] = X_adv[:, col_idx].toarray().flatten().astype(bool)
 
-        for _ in range(MAX_RULES):
+        for _ in range(EngineConstants.MAX_RULES_PER_RUN.value):
             best_candidate_idx = -1
             best_new_coverage = 0
 

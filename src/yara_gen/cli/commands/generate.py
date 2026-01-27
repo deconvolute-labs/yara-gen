@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from yara_gen.adapters import ADAPTER_MAP, get_adapter
-from yara_gen.constants import AdapterType, EngineType, NGramSettings
+from yara_gen.constants import AdapterType, EngineConstants, EngineType
 from yara_gen.engine.factory import get_extractor
 from yara_gen.generation.writer import YaraWriter
 from yara_gen.models.config import BaseExtractorConfig, NgramConfig
@@ -88,11 +88,17 @@ def register_args(
 
     # Engine-specific args (N-Gram)
     parser.add_argument(
-        "--min-ngram", type=int, default=3, help="[N-Gram Engine] Minimum token length"
+        "--min-ngram",
+        type=int,
+        default=EngineConstants.DEFAULT_MIN_NGRAM.value,
+        help="[N-Gram Engine] Minimum token length",
     )
 
     parser.add_argument(
-        "--max-ngram", type=int, default=10, help="[N-Gram Engine] Maximum token length"
+        "--max-ngram",
+        type=int,
+        default=EngineConstants.DEFAULT_MAX_NGRAM.value,
+        help="[N-Gram Engine] Maximum token length",
     )
 
     parser.add_argument(
@@ -136,7 +142,7 @@ def register_args(
     parser.add_argument(
         "--min-df",
         type=float,
-        default=NGramSettings.MIN_DOCUMENT_FREQ,
+        default=EngineConstants.MIN_DOCUMENT_FREQ.value,
         help="Minimum document frequency (percentage 0.0-1.0 or integer count).",
     )
 
@@ -158,14 +164,14 @@ def run(args: argparse.Namespace) -> None:
         chosen_threshold = args.threshold
     else:
         chosen_threshold = (
-            NGramSettings.THRESHOLD_STRICT
+            EngineConstants.THRESHOLD_STRICT.value
             if args.mode == "strict"
-            else NGramSettings.THRESHOLD_LOOSE
+            else EngineConstants.THRESHOLD_LOOSE.value
         )
 
     thresh_value = (
         chosen_threshold.value
-        if isinstance(chosen_threshold, NGramSettings)
+        if isinstance(chosen_threshold, EngineConstants)
         else chosen_threshold
     )
 
