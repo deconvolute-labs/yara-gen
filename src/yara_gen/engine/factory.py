@@ -1,8 +1,8 @@
 from typing import Any
 
-from yara_gen.extraction.base import BaseExtractor
-from yara_gen.extraction.ngram import NgramExtractor
-from yara_gen.extraction.stub import StubExtractor
+from yara_gen.engine.base import BaseExtractor
+from yara_gen.engine.ngram import NgramExtractor
+from yara_gen.engine.stub import StubExtractor
 from yara_gen.models.config import BaseExtractorConfig
 
 

@@ -4,7 +4,7 @@ from typing import Any
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 
-from yara_gen.extraction.base import BaseExtractor
+from yara_gen.engine.base import BaseExtractor
 from yara_gen.generation.builder import RuleBuilder
 from yara_gen.models.config import NgramConfig
 from yara_gen.models.text import GeneratedRule, TextSample

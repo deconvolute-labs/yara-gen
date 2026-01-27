@@ -1,6 +1,6 @@
 import pytest
 
-from yara_gen.extraction.stub import StubExtractor
+from yara_gen.engine.stub import StubExtractor
 from yara_gen.models.config import BaseExtractorConfig
 from yara_gen.models.text import DatasetType, TextSample
 

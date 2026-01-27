@@ -1,8 +1,8 @@
 import pytest
 
-from yara_gen.extraction.factory import get_extractor
-from yara_gen.extraction.ngram import NgramExtractor
-from yara_gen.extraction.stub import StubExtractor
+from yara_gen.engine.factory import get_extractor
+from yara_gen.engine.ngram import NgramExtractor
+from yara_gen.engine.stub import StubExtractor
 from yara_gen.models.config import BaseExtractorConfig, NgramConfig
 
 

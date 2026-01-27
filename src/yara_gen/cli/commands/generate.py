@@ -6,7 +6,7 @@ from pathlib import Path
 
 from yara_gen.adapters import ADAPTER_MAP, get_adapter
 from yara_gen.constants import AdapterType, EngineType, NGramSettings
-from yara_gen.extraction.factory import get_extractor
+from yara_gen.engine.factory import get_extractor
 from yara_gen.generation.writer import YaraWriter
 from yara_gen.models.config import BaseExtractorConfig, NgramConfig
 from yara_gen.models.text import DatasetType
