@@ -90,7 +90,8 @@ def run(args: argparse.Namespace) -> None:
     adapter_kwargs = config.get("adapter", {})
 
     log_run_config(logger, args, {"adapter_kwargs": adapter_kwargs})
-
+    logger.debug(f"Using config: {config}")
+    logger.debug(f"Using adapter args: {adapter_kwargs}")
     logger.info(f"Preparing data from {args.input} using adapter '{args.adapter}' ...")
 
     try:

@@ -16,8 +16,8 @@ def main() -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     input_name = "unknown"
-    if hasattr(args, "input_path") and args.input_path:
-        input_name = args.input_path.name
+    if hasattr(args, "input") and args.input:
+        input_name = args.input.name
 
     log_filename = f"logs_{args.command}_{input_name.split('.')[0]}_{timestamp}.log"
     log_path = f"logs/{log_filename}"

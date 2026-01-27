@@ -158,6 +158,8 @@ def run(args: argparse.Namespace) -> None:
 
         # Log the final resolved configuration for debugging
         log_run_config(logger, args, app_config.model_dump())
+        logger.debug(f"Using config: {app_config.model_dump_json()}")
+        logger.debug(f"Using engine config: {app_config.engine}")
         logger.info(f"Starting generation with Engine: {engine_type}")
 
         # Initialize Components

@@ -67,14 +67,63 @@ def log_run_config(
     """
     Logs the program banner and configuration parameters in a formatted box.
     """
-    width = 60
+    width = 80
     border = "+" + "-" * (width - 2) + "+"
 
     def log_line(content: str, center: bool = False) -> None:
         if center:
             logger.info(f"| {content.center(width - 4)} |")
         else:
-            logger.info(f"| {content.ljust(width - 4)} |")
+            # Check if content fits directly
+            if len(content) <= width - 4:
+                logger.info(f"| {content.ljust(width - 4)} |")
+            else:
+                # Basic wrapping if a single line is too long (though recursive format handles most)
+                logger.info(f"| {content[: width - 7]}... |")
+
+    def format_value(key: str, value: Any, level: int = 0) -> list[str]:
+        """
+        Recursively formats values into a list of strings for display.
+        """
+        lines = []
+        indent = "  " * level
+        key_width = 20 - (len(indent))  # Adjust key width based on indent
+        if key_width < 5:
+            key_width = 5
+
+        # Format Key (only for top level or dict keys)
+        if key:
+            key_str = key.replace("_", " ").title()
+            prefix = f"{indent}{key_str:<{key_width}}: "
+        else:
+            prefix = f"{indent}- "
+
+        if isinstance(value, dict):
+            if key:
+                lines.append(f"{indent}{key_str}")
+            for k, v in value.items():
+                lines.extend(format_value(k, v, level + 1))
+
+        elif isinstance(value, (list, tuple, set)):
+            # If it's a simple list of primitives, try to keep it compact?
+            # User check: "list for example for the ADapter Keywords... show all variables"
+            # Let's print them one per line if they are strings, effectively
+            if key:
+                lines.append(f"{indent}{key_str}:")
+            for item in value:
+                # Lists just get bullet points
+                lines.extend(format_value("", item, level + 1))
+
+        else:
+            # Primitive values
+            val_str = str(value)
+            # If it's a list item (no key), just the value
+            if not key:
+                lines.append(f"{indent}{val_str}")
+            else:
+                lines.append(f"{prefix}{val_str}")
+
+        return lines
 
     logger.info(border)
     log_line("YARA Gen", center=True)
@@ -93,14 +142,10 @@ def log_run_config(
         logger.info("|" + "-" * (width - 2) + "|")  # Separator
 
         for key, value in sorted(filtered_items.items()):
-            # Format Key
-            key_str = key.replace("_", " ").title()
-
-            # Format Value
-            val_str = str(value)
-            if len(val_str) > 33:  # Wrap/Truncate if too long (simple approach)
-                val_str = val_str[:30] + "..."
-
-            logger.info(f"| {key_str:<20}: {val_str:<33} |")
+            formatted_lines = format_value(key, value)
+            for line in formatted_lines:
+                # Ensure we don't exceed the box width logic in log_line
+                # We construct the full content string here, log_line handles the border
+                log_line(line)
 
     logger.info(border)
