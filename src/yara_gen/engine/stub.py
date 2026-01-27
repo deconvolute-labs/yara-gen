@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from yara_gen.extraction.base import BaseExtractor
+from yara_gen.engine.base import BaseExtractor
 from yara_gen.models.config import BaseExtractorConfig
 from yara_gen.models.text import GeneratedRule, RuleString, TextSample
 from yara_gen.utils.logger import get_logger

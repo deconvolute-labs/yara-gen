@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from yara_gen.cli import parse_args
-from yara_gen.commands import generate, prepare
+from yara_gen.cli.args import parse_args
+from yara_gen.cli.commands import generate, prepare
 from yara_gen.utils.logger import setup_logger
 
 

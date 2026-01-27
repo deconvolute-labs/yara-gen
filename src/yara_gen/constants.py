@@ -17,7 +17,23 @@ class AdapterType(str, Enum):
     HUGGINGFACE = "huggingface"
 
 
-class NGramSettings(float, Enum):
+class EngineConstants(Enum):
+    """
+    Default configuration values and thresholds for extraction engines.
+    Includes scoring thresholds, N-gram limits, and optimization bounds.
+    """
+
+    # Thresholds
     THRESHOLD_STRICT = 0.1
     THRESHOLD_LOOSE = 0.01
     MIN_DOCUMENT_FREQ = 0.01
+
+    # Defaults
+    DEFAULT_MIN_NGRAM = 3
+    DEFAULT_MAX_NGRAM = 10
+
+    # Limits
+    MAX_RULES_PER_RUN = 50
+
+    # Scoring
+    DEFAULT_BENIGN_PENALTY = 1.0

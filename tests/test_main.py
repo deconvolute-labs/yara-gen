@@ -58,7 +58,7 @@ def test_generate_command_deduplication(tmp_path: Path, mocker: MagicMock) -> No
     # We mock 'get_extractor' so we don't need to rely on the actual N-Gram engine
     # finding patterns in our dummy data. We just want to test the filtering logic
     # in main.
-    mock_get_extractor = mocker.patch("yara_gen.commands.generate.get_extractor")
+    mock_get_extractor = mocker.patch("yara_gen.cli.commands.generate.get_extractor")
     mock_extractor_instance = MagicMock()
     mock_get_extractor.return_value = mock_extractor_instance
 

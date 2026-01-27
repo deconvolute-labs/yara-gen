@@ -1,6 +1,6 @@
 import argparse
 
-from yara_gen.commands import generate, prepare
+from yara_gen.cli.commands import generate, prepare
 
 
 def parse_args() -> argparse.Namespace:
