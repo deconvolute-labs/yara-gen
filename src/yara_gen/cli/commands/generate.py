@@ -108,7 +108,7 @@ def register_args(
 def run(args: argparse.Namespace) -> None:
     try:
         # args.config comes from the parent parser in cli/args.py
-        config_path = getattr(args, "config", Path("config.yaml"))
+        config_path = getattr(args, "config", Path("generation_config.yaml"))
         logger.info(f"Loading configuration from: {config_path}")
 
         # Load raw dict; empty if file missing (handled in load_config defaults/errors)

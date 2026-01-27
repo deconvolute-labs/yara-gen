@@ -9,15 +9,15 @@ Use a two-step pipeline for best results.
 
 The generator works best with JSONL. This format allows faster processing and easier inspection.
 
-## 2. Configuration (`config.yaml`)
+## 2. Configuration (`generation_config.yaml`)
 
-The `config.yaml` file controls all defaults. It lives in the project root.
+The `generation_config.yaml` file controls defaults exclusively for the `generate` command. It is ignored by the `prepare` command. The file lives in the project root.
 
 ### Structure
 The file has three main sections:
 * **adversarial_adapter:** Where attack data comes from.
 * **benign_adapter:** Where control data comes from.
-* **engine:** Algorithm settings (e.g., N-gram thresholds).
+* **engine:** Algorithm settings (e.g. N-gram thresholds).
 
 ### Complete Example
 
@@ -54,16 +54,16 @@ engine:
 ```
 
 ## 3. Command: `prepare`
-Normalizes large datasets into JSONL.
+Normalizes large datasets into JSONL. This command is configured purely via CLI arguments and flags. It does not read `generation_config.yaml`.
 
 Basic Usage:
 ```bash
 ygen prepare raw_data.csv --output clean_data.jsonl --adapter generic-csv
 ```
 
-### Universal Filtering
+#### Universal Filtering
 
-Filter rows for all adapters using --filter. Format: column=value.
+Filter rows for all adapters using `--filter`. Format: `column=value`.
 
 ```bash
 # Only process rows where 'label' is 'jailbreak'
@@ -72,7 +72,7 @@ ygen prepare data.csv --output clean.jsonl --filter "label=jailbreak"
 
 ### Hugging Face Adapter
 
-Download and stream directly from the Hub. Use --set to pass specific arguments like splits or tokens.
+Download and stream directly from the Hub. Use `--set` to pass specific arguments like splits or tokens.
 
 Example:
 ```bash
@@ -93,10 +93,10 @@ ygen generate jailbreaks.jsonl --benign benign.jsonl --output rules.yar
 
 ### CLI Overrides
 
-CLI arguments always override config.yaml.
+CLI arguments always override `generation_config.yaml`.
 
 - `--output`: Sets the destination file.
-- `--engine`: Switches the algorithm (e.g., ngram).
+- `--engine`: Switches the algorithm (e.g. ngram).
 - `--adapter`: Overrides the configured adapter type.
 
 ### Tuning Sensitivity

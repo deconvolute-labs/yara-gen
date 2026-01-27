@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
         "-c",
         type=Path,
         default=argparse.SUPPRESS,
-        help="Path to the configuration YAML file (default: config.yaml)",
+        help="Path to the configuration YAML file (default: generation_config.yaml)",
     )
 
     shared_parser.add_argument(
