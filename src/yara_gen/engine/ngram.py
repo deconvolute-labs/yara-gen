@@ -1,3 +1,4 @@
+import itertools
 from collections.abc import Iterable
 from typing import Any
 
@@ -11,8 +12,11 @@ from yara_gen.generation.builder import RuleBuilder
 from yara_gen.models.config import NgramConfig
 from yara_gen.models.text import GeneratedRule, TextSample
 from yara_gen.utils.logger import get_logger
+from yara_gen.utils.progress import ProgressGenerator
 
 logger = get_logger()
+
+PROGRESS_LOG_INTERVAL = 100
 
 
 class NgramExtractor(BaseExtractor[NgramConfig]):
@@ -73,31 +77,33 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
             ValueError: If the adversarial dataset is empty or if vectorization fails
             due
         """
-        # 1. Materialize Data
-        # We need lists for sklearn. For very large datasets, we would implement
-        # `dask` or batching, but for <500k samples, lists are faster and simpler.
-        adv_samples = list(adversarial)
-        benign_samples = list(benign)
-
-        logger.info(f"Found {len(adv_samples)} adversarial samples.")
-        logger.info(f"Found {len(benign_samples)} benign samples.")
-
-        adv_texts: list[str] = [s.text for s in adv_samples]
-        benign_texts: list[str] = [s.text for s in benign_samples]
-        n_adv = len(adv_texts)
-        n_benign = len(benign_texts) if benign_texts else 1
-
-        source_name = "unknown_source"
-        if adv_samples:
-            source_name = adv_samples[0].source
-
-        if n_adv == 0:
+        # 1. Streaming setup
+        # We need to peek at the first adversarial item to get the 'source' name,
+        # but we cannot consume the iterator.
+        adv_iterator = iter(adversarial)
+        try:
+            first_adv = next(adv_iterator)
+            source_name = first_adv.source
+            # Reconstruct the stream: [first_item] + rest_of_iterator
+            adv_stream = itertools.chain([first_adv], adv_iterator)
+        except StopIteration:
             logger.warning("No adversarial samples provided. Skipping extraction.")
             return []
 
-        logger.info(
-            f"Starting extraction on {n_adv} adversarial and {n_benign} benign samples."
+        # Wrap streams in ProgressGenerator for visibility
+        adv_stream_tracked = ProgressGenerator(
+            adv_stream,
+            desc="Vectorizing Adversarial Samples",
+            interval=PROGRESS_LOG_INTERVAL,
         )
+
+        # We create a text generator for the vectorizer
+        # Note: We can't access .source anymore after this without complex tee-ing,
+        # which is why we peeked above.
+        adv_texts = (s.text for s in adv_stream_tracked)
+
+        # Benign is simpler, we just need the texts
+        benign_texts = (s.text for s in benign)
 
         # 2. Vectorization & Counting
         # We use a single vectorizer to handle both datasets. This ensures the
@@ -114,7 +120,7 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
             analyzer="word",
         )
 
-        logger.debug("Generating n-gram candidates (this may take a moment)...")
+        logger.debug("Generating n-gram candidates ...")
         try:
             # Fit on adversarial to find candidates
             X_adv = vectorizer.fit_transform(adv_texts)
@@ -125,17 +131,27 @@ class NgramExtractor(BaseExtractor[NgramConfig]):
                 "The adversarial dataset might be too small or too diverse."
             ) from e
 
+        # Get the actual count from the matrix shape (rows, columns)
+        n_adv = X_adv.shape[0]
         feature_names = vectorizer.get_feature_names_out()
-        logger.info(f"Analyzed {len(feature_names)} candidate n-grams.")
+        logger.info(
+            f"Analyzed {len(feature_names)} candidate n-grams from {n_adv} samples."
+        )
 
         # 3. Benign Cross-Reference
-        # We only check benign documents for the *specific* n-grams we found above.
-        # This is highly optimized (we don't count random benign words).
-        if benign_texts:
+        # Note: vectorizer is already fitted, so we use transform()
+        # We handle the case where benign might be empty
+        try:
             X_benign = vectorizer.transform(benign_texts)
             benign_counts = np.array(X_benign.sum(axis=0)).flatten()
-        else:
+            n_benign = X_benign.shape[0]
+            if n_benign == 0:
+                n_benign = 1  # Avoid division by zero
+        except ValueError:
+            # Likely empty benign set or issues with stream
+            logger.debug("Benign set empty or invalid, assuming 0 benign occurrences.")
             benign_counts = np.zeros(len(feature_names))
+            n_benign = 1
 
         adv_counts = np.array(X_adv.sum(axis=0)).flatten()
 

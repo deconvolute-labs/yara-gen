@@ -7,6 +7,7 @@ from pathlib import Path
 from yara_gen.adapters import ADAPTER_MAP, get_adapter
 from yara_gen.constants import AdapterType, EngineConstants, EngineType
 from yara_gen.engine.factory import get_extractor
+from yara_gen.errors import ConfigurationError, DataError
 from yara_gen.generation.writer import YaraWriter
 from yara_gen.models.config import BaseExtractorConfig, NgramConfig
 from yara_gen.models.text import DatasetType
@@ -149,79 +150,76 @@ def register_args(
 
 def run(args: argparse.Namespace) -> None:
     try:
-        filter_col, filter_val = parse_filter_arg(args.filter)
-    except ValueError as e:
-        logger.error(str(e))
-        sys.exit(1)
+        # Prepare Configuration
+        try:
+            filter_col, filter_val = parse_filter_arg(args.filter)
+        except ValueError as e:
+            raise ConfigurationError(str(e)) from e
 
-    logger.info(f"Starting generation in {args.mode} mode...")
+        logger.info(f"Starting generation in {args.mode} mode ...")
 
-    # Build the specific Configuration based on Engine selection
-    extractor_config: BaseExtractorConfig
+        # Build the specific Configuration based on Engine selection
+        extractor_config: BaseExtractorConfig
 
-    # Determine threshold
-    if args.threshold is not None:
-        chosen_threshold = args.threshold
-    else:
-        chosen_threshold = (
-            EngineConstants.THRESHOLD_STRICT.value
-            if args.mode == "strict"
-            else EngineConstants.THRESHOLD_LOOSE.value
+        # Determine threshold
+        if args.threshold is not None:
+            score_threshold = args.threshold
+        else:
+            score_threshold = (
+                EngineConstants.THRESHOLD_STRICT.value
+                if args.mode == "strict"
+                else EngineConstants.THRESHOLD_LOOSE.value
+            )
+
+        log_run_config(
+            logger,
+            args,
+            {
+                "calculated_threshold": score_threshold,
+                "threshold_source": "Override" if args.threshold else "Default",
+            },
         )
 
-    thresh_value = (
-        chosen_threshold.value
-        if isinstance(chosen_threshold, EngineConstants)
-        else chosen_threshold
-    )
+        if args.engine == EngineType.NGRAM.value:
+            logger.debug("Configuring N-Gram Engine parameters...")
+            extractor_config = NgramConfig(
+                score_threshold=score_threshold,
+                min_ngram_length=args.min_ngram,
+                max_ngram_length=args.max_ngram,
+                rule_date=args.rule_date,
+                min_document_frequency=args.min_df,
+            )
+        else:
+            # Placeholder for other engines if implemented
+            # For now, defaulting to base or erroring if strict checking wasn't done by
+            # argparse
+            # Stub engine might need config too.
+            extractor_config = BaseExtractorConfig(rule_date=args.rule_date)
+            if args.engine != EngineType.STUB.value:
+                # Should be caught by argparse choices but good for safety
+                pass
 
-    extra_config = {
-        "calculated_threshold": thresh_value,
-        "threshold_source": "Override" if args.threshold else "Default",
-    }
-    log_run_config(logger, args, extra_config)
+        # Initialize Engine & Load Data
+        try:
+            logger.info(f"Initializing engine: {args.engine}")
+            extractor = get_extractor(args.engine, extractor_config)
 
-    if args.engine == EngineType.NGRAM.value:
-        logger.debug("Configuring N-Gram Engine parameters...")
-        extractor_config = NgramConfig(
-            score_threshold=chosen_threshold,
-            min_ngram_length=args.min_ngram,
-            max_ngram_length=args.max_ngram,
-            rule_date=args.rule_date,
-            min_document_frequency=args.min_df,
-        )
-    else:
-        # Placeholder for other engines if implemented
-        # For now, defaulting to base or erroring if strict checking wasn't done by
-        # argparse
-        # Stub engine might need config too.
-        extractor_config = BaseExtractorConfig(rule_date=args.rule_date)
-        if args.engine != EngineType.STUB.value:
-            # Should be caught by argparse choices but good for safety
-            pass
+            logger.info(f"Loading adversarial data: {args.input_path}")
+            adv_adapter = get_adapter(args.adapter, DatasetType.ADVERSARIAL)
+            adv_stream = adv_adapter.load(args.input_path, config_name=args.config_name)
 
-    try:
-        # Adversarial Stream
-        logger.info(f"Loading adversarial data from: {args.input_path}")
-        adv_adapter = get_adapter(args.adapter, DatasetType.ADVERSARIAL)
-        adv_stream = adv_adapter.load(args.input_path, config_name=args.config_name)
+            if filter_col and filter_val:
+                adv_stream = filter_stream(adv_stream, filter_col, filter_val)
 
-        # Apply Universal Filter
-        if filter_col and filter_val:
-            adv_stream = filter_stream(adv_stream, filter_col, filter_val)
+            logger.info(f"Loading benign data: {args.benign}")
+            benign_adapter = get_adapter(args.benign_adapter, DatasetType.BENIGN)
+            benign_stream = benign_adapter.load(args.benign)
 
-        logger.info(f"Loading benign data from: {args.benign}")
-        benign_adapter = get_adapter(args.benign_adapter, DatasetType.BENIGN)
-        benign_stream = benign_adapter.load(args.benign)
+            # Execution
+            rules = extractor.extract(adversarial=adv_stream, benign=benign_stream)
 
-        # Extraction
-        logger.info(f"Initializing extraction engine: {args.engine}")
-        extractor = get_extractor(args.engine, extractor_config)
-        rules = extractor.extract(adversarial=adv_stream, benign=benign_stream)
-
-        # Deduplication
-        if args.existing_rules:
-            if args.existing_rules.exists():
+            # Deduplication
+            if args.existing_rules and args.existing_rules.exists():
                 logger.info(
                     f"Deduplicating against existing rules: {args.existing_rules}"
                 )
@@ -241,22 +239,20 @@ def run(args: argparse.Namespace) -> None:
                         f"Deduplication complete. Dropped {dropped_count} "
                         "duplicate rules."
                     )
-                else:
-                    logger.debug("Deduplication complete. No duplicates found.")
+
+            # Output Generation
+            writer = YaraWriter()
+            writer.write(rules, args.output)
+
+            if rules:
+                logger.info(f"Generation complete. Created {len(rules)} rules.")
             else:
-                logger.warning(
-                    f"Existing rules file not found: {args.existing_rules}. "
-                    "Skipping deduplication."
-                )
-
-        # Output Generation
-        writer = YaraWriter()
-        writer.write(rules, args.output)
-
-        if rules:
-            logger.info(f"Generation complete. Created {len(rules)} rules.")
-        else:
-            logger.warning("Generation complete, but NO rules were created.")
+                logger.warning("Generation complete, but NO rules were created.")
+        except (ValueError, FileNotFoundError) as e:
+            raise DataError(f"Data processing failed: {str(e)}") from e
+    except (ConfigurationError, DataError) as e:
+        logger.error(f"{e.__class__.__name__}: {str(e)}")
+        sys.exit(1)
     except Exception:
-        logger.exception("Generation failed")
+        logger.exception("An unexpected error occurred.")
         sys.exit(1)
