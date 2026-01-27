@@ -84,7 +84,7 @@ def test_generate_command_deduplication(tmp_path: Path, mocker: MagicMock) -> No
         "yara-gen",
         "generate",
         str(adv_file),
-        "--benign",
+        "--benign-dataset",
         str(benign_file),
         "--output",
         str(output_file),

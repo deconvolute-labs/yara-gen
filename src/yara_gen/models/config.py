@@ -17,7 +17,7 @@ class BaseEngineConfig(BaseModel):
 
     rule_date: str | None = None
 
-    # Allow extra fields for engine-specific overrides (like min_ngram_length)
+    # Allow extra fields for engine-specific overrides (like min_ngram)
     # when loading generic configs.
     model_config = {"extra": "allow"}
 
@@ -27,8 +27,8 @@ class NgramEngineConfig(BaseEngineConfig):
     Configuration specific to the Differential N-Gram Engine.
     """
 
-    min_ngram_length: int = EngineConstants.DEFAULT_MIN_NGRAM.value
-    max_ngram_length: int = EngineConstants.DEFAULT_MAX_NGRAM.value
+    min_ngram: int = EngineConstants.DEFAULT_MIN_NGRAM.value
+    max_ngram: int = EngineConstants.DEFAULT_MAX_NGRAM.value
 
     # The penalty lambda for benign matches
     benign_penalty_weight: float = EngineConstants.DEFAULT_BENIGN_PENALTY.value

@@ -22,7 +22,7 @@ def main() -> None:
     log_filename = f"logs_{args.command}_{input_name.split('.')[0]}_{timestamp}.log"
     log_path = f"logs/{log_filename}"
 
-    log_level = "DEBUG" if args.verbose else "INFO"
+    log_level = "DEBUG" if getattr(args, "verbose", False) else "INFO"
     logger = setup_logger(level=log_level, log_file=log_path)
     logger.debug(f"Logger initialized in {log_level} mode")
     logger.info(f"Logging to file: {log_path}")

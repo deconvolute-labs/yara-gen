@@ -5,38 +5,45 @@ from yara_gen.cli.commands import generate, prepare
 
 
 def parse_args() -> argparse.Namespace:
+    shared_parser = argparse.ArgumentParser(add_help=False)
+
+    shared_parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help="Enable verbose debug logging",
+    )
+
+    shared_parser.add_argument(
+        "--config",
+        "-c",
+        type=Path,
+        default=argparse.SUPPRESS,
+        help="Path to the configuration YAML file (default: config.yaml)",
+    )
+
+    shared_parser.add_argument(
+        "--set",
+        "-s",
+        action="append",
+        default=argparse.SUPPRESS,
+        help="Override config values using dot notation (e.g. 'engine.min_ngram=4')",
+    )
+
     parser = argparse.ArgumentParser(
         description=(
             "Automated YARA rule generator for indirect prompt injection defense."
         ),
         prog="yara-rule-gen",
-    )
-
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose debug logging"
-    )
-
-    # Global Configuration Arguments
-    parser.add_argument(
-        "--config",
-        "-c",
-        type=Path,
-        default=Path("config.yaml"),
-        help="Path to the configuration YAML file (default: config.yaml)",
-    )
-
-    parser.add_argument(
-        "--set",
-        "-s",
-        action="append",
-        help="Override config values using dot notation (e.g. 'engine.min_ngram=4')",
+        parents=[shared_parser],
     )
 
     subparsers = parser.add_subparsers(
         dest="command", required=True, help="Available commands"
     )
 
-    prepare.register_args(subparsers)
-    generate.register_args(subparsers)
+    prepare.register_args(subparsers, parents=[shared_parser])
+    generate.register_args(subparsers, parents=[shared_parser])
 
     return parser.parse_args()

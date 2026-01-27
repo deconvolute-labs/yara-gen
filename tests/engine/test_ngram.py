@@ -11,8 +11,8 @@ def engine():
     """Returns an NgramEngine instance with default config."""
     config = NgramEngineConfig(
         score_threshold=0.5,
-        min_ngram_length=2,  # Small for testing
-        max_ngram_length=5,
+        min_ngram=2,  # Small for testing
+        max_ngram=5,
         benign_penalty_weight=1.0,
     )
     return NgramEngine(config)

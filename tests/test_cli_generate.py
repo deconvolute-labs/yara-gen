@@ -18,7 +18,12 @@ def test_generate_dot_notation_overrides(tmp_path: Path, mocker: MagicMock) -> N
     # Create config.yaml with specific defaults
     config_file = tmp_path / "config.yaml"
     config_data = {
-        "engine": {"type": "ngram", "min_ngram": 3, "max_ngram": 5, "top_k": 10},
+        "engine": {
+            "type": "ngram",
+            "min_ngram": 3,
+            "max_ngram": 5,
+            "max_rules_per_run": 10,
+        },
         "adversarial_adapter": {"type": "jsonl"},
         "benign_adapter": {"type": "jsonl"},
     }
@@ -40,18 +45,19 @@ def test_generate_dot_notation_overrides(tmp_path: Path, mocker: MagicMock) -> N
     # Mock adapters so they don't actually try to load files
     mocker.patch("yara_gen.cli.commands.generate.get_adapter")
 
-    # We pass --set engine.min_ngram=10 and engine.top_k=50 to override defaults
+    # We pass --set engine.min_ngram=10 and engine.max_rules_per_run=25 to
+    # override defaults
     test_args = [
         "yara-gen",
+        "generate",
         "--config",
         str(config_file),
         "--set",
         "engine.min_ngram=10",
         "--set",
-        "engine.top_k=50",
-        "generate",
+        "engine.max_rules_per_run=25",
         str(adv_file),
-        "--benign",
+        "--benign-dataset",
         str(benign_file),
     ]
 
@@ -70,11 +76,18 @@ def test_generate_dot_notation_overrides(tmp_path: Path, mocker: MagicMock) -> N
 
     # Check if overrides were applied
     # Note: validation ensures these are integers if Pydantic model is correct
-    assert engine_config_arg.min_ngram == 10, "min_ngram was not overridden by --set"
-    assert engine_config_arg.top_k == 50, "top_k was not overridden by --set"
+    # We access via getattr or direct attribute. Extra fields are accessible directly
+    # in Pydantic v2
+    min_ngram = getattr(engine_config_arg, "min_ngram", None)
+    assert min_ngram == 10, f"min_ngram was not overridden by --set. Got: {min_ngram}"
+
+    assert engine_config_arg.max_rules_per_run == 25, (
+        f"max_rules_per_run not overridden. Got: {engine_config_arg.max_rules_per_run}"
+    )
 
     # Check that non-overridden values remain as per config.yaml
-    assert engine_config_arg.max_ngram == 5, "max_ngram should match config.yaml"
+    max_ngram = getattr(engine_config_arg, "max_ngram", None)
+    assert max_ngram == 5, f"max_ngram should match config.yaml. Got: {max_ngram}"
 
 
 def test_generate_cli_args_override_config(tmp_path: Path, mocker: MagicMock) -> None:
@@ -123,7 +136,7 @@ def test_generate_cli_args_override_config(tmp_path: Path, mocker: MagicMock) ->
         str(config_file),
         "generate",
         str(adv_file),
-        "--benign",
+        "--benign-dataset",
         str(benign_file),
         "--output",
         str(custom_output),

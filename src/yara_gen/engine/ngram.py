@@ -111,8 +111,8 @@ class NgramEngine(BaseEngine[NgramEngineConfig]):
         # min_df=0.01: A phrase must appear in 1% of attacks to be worth checking.
         vectorizer = CountVectorizer(
             ngram_range=(
-                self.config.min_ngram_length,
-                self.config.max_ngram_length,
+                self.config.min_ngram,
+                self.config.max_ngram,
             ),
             min_df=self.config.min_document_frequency,
             binary=True,  # We care about presence (Document Freq), not Count.

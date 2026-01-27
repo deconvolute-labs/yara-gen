@@ -44,6 +44,8 @@ The output `.yar` file is ready to load into any YARA engine or the [Deconvolute
 
 ## Commands Overview
 
+Here are some basic commands. For a complete guide on configuration, dot-notation overrides, and adapter settings, see the [User Guide](docs/User_Guide.md).
+
 ### ygen prepare
 
 Prepares large benign datasets for efficient rule generation. Use this when your control set is large or expensive to parse repeatedly.
@@ -87,16 +89,15 @@ ygen generate attacks.csv \
 
 **Tuning Sensitivity**
 
-Control how aggressive the rule generation should be.
-- `strict`: fewer rules, lower false positive rate
-- `loose`: broader coverage, higher sensitivity
+Control how aggressive the rule generation should be. The `--set` flag allows us to pass args using a dot-notation:
 
 ```bash
 ygen generate attacks.csv \
   --benign control.jsonl \
-  --mode strict \
+  --set engine.score_threshold=0.9 \
   --output rules.yar
 ```
+
 
 ## Output and Compatibility
 

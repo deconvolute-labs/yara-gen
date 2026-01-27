@@ -44,10 +44,10 @@ engine:
 
   # N-Gram Specific Parameters
   # Overwrites DEFAULT_MIN_NGRAM
-  min_ngram_length: 3
+  min_ngram: 3
   
   # Overwrites DEFAULT_MAX_NGRAM
-  max_ngram_length: 10
+  max_ngram: 10
   
   # Overwrites MIN_DOCUMENT_FREQ
   min_document_frequency: 0.01
