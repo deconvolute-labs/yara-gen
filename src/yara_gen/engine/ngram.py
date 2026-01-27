@@ -6,10 +6,10 @@ import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 
 from yara_gen.constants import EngineConstants
-from yara_gen.engine.base import BaseExtractor
+from yara_gen.engine.base import BaseEngine
 from yara_gen.errors import DataError
 from yara_gen.generation.builder import RuleBuilder
-from yara_gen.models.config import NgramConfig
+from yara_gen.models.config import NgramEngineConfig
 from yara_gen.models.text import GeneratedRule, TextSample
 from yara_gen.utils.logger import get_logger
 from yara_gen.utils.progress import ProgressGenerator
@@ -19,7 +19,7 @@ logger = get_logger()
 PROGRESS_LOG_INTERVAL = 100
 
 
-class NgramExtractor(BaseExtractor[NgramConfig]):
+class NgramEngine(BaseEngine[NgramEngineConfig]):
     """
     Extraction engine based on Differential N-Gram Analysis.
 

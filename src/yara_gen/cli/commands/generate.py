@@ -5,16 +5,15 @@ import sys
 from pathlib import Path
 
 from yara_gen.adapters import ADAPTER_MAP, get_adapter
-from yara_gen.constants import AdapterType, EngineConstants, EngineType
-from yara_gen.engine.factory import get_extractor
+from yara_gen.constants import AdapterType, EngineType
+from yara_gen.engine.factory import get_engine
 from yara_gen.errors import ConfigurationError, DataError
 from yara_gen.generation.writer import YaraWriter
-from yara_gen.models.config import BaseExtractorConfig, NgramConfig
+from yara_gen.models.config import AppConfig
 from yara_gen.models.text import DatasetType
-from yara_gen.utils.args import parse_filter_arg
+from yara_gen.utils.config import apply_overrides, load_config
 from yara_gen.utils.deduplication import parse_existing_rules
 from yara_gen.utils.logger import get_logger, log_run_config
-from yara_gen.utils.stream import filter_stream
 
 logger = get_logger()
 
@@ -29,37 +28,37 @@ def register_args(
         help="Extract signatures from adversarial inputs and generate YARA rules.",
     )
 
-    parser.add_argument("input_path", type=Path, help="Path to the adversarial dataset")
+    parser.add_argument(
+        "input_path", type=Path, nargs="?", help="Path to the adversarial dataset"
+    )
+
+    # Note: Defaults are set to None to allow config.yaml to take precedence
+    # unless the user explicitly provides the flag.
 
     parser.add_argument(
         "--adapter",
         "-a",
         type=str,
-        default=AdapterType.JSONL.value,
         help=(
             f"Adapter for adversarial input. Options: [{available_adapters}] "
-            f"(default: {AdapterType.JSONL.value})"
+            "(overrides config)"
         ),
     )
 
     parser.add_argument(
-        "--config-name",
-        type=str,
-        help="Configuration name for adversarial dataset (e.g. HuggingFace configs).",
-    )
-
-    parser.add_argument(
-        "--benign", "-b", type=Path, required=True, help="Path to the control dataset"
+        "--benign",
+        "-b",
+        type=Path,
+        help="Path to the control dataset (overrides config)",
     )
 
     parser.add_argument(
         "--benign-adapter",
         "-ba",
         type=str,
-        default=AdapterType.JSONL.value,
         help=(
             f"Adapter for benign input. Options: [{available_adapters}] "
-            f"(default: {AdapterType.JSONL.value})"
+            "(overrides config)"
         ),
     )
 
@@ -74,57 +73,16 @@ def register_args(
         "--output",
         "-o",
         type=Path,
-        required=True,
-        help="Path to save the generated .yar file",
+        help="Path to save the generated .yar file (overrides config)",
     )
 
     parser.add_argument(
         "--engine",
         choices=[e.value for e in EngineType],
-        default=EngineType.NGRAM.value,
-        help=(
-            f"The algorithm used to generate rules (default: {EngineType.NGRAM.value})"
-        ),
+        help=("The algorithm used to generate rules (overrides config)"),
     )
 
-    # Engine-specific args (N-Gram)
-    parser.add_argument(
-        "--min-ngram",
-        type=int,
-        default=EngineConstants.DEFAULT_MIN_NGRAM.value,
-        help="[N-Gram Engine] Minimum token length",
-    )
-
-    parser.add_argument(
-        "--max-ngram",
-        type=int,
-        default=EngineConstants.DEFAULT_MAX_NGRAM.value,
-        help="[N-Gram Engine] Maximum token length",
-    )
-
-    parser.add_argument(
-        "--mode",
-        choices=["strict", "loose"],
-        default="strict",
-        help="Sensitivity threshold (default: strict)",
-    )
-
-    parser.add_argument(
-        "--tag",
-        action="append",
-        dest="tags",
-        help="Custom tags to add to generated rules (can be used multiple times)",
-    )
-
-    parser.add_argument(
-        "--filter",
-        type=str,
-        help=(
-            "Filter applied to adversarial data in 'column=value' format "
-            "(e.g. 'label=1')."
-        ),
-    )
-
+    # Generic Rule Parameters (kept in CLI as requested)
     parser.add_argument(
         "--rule-date",
         type=str,
@@ -135,88 +93,114 @@ def register_args(
     )
 
     parser.add_argument(
-        "--threshold",
-        type=float,
-        help="Override the score threshold (0.0-1.0). Overrides --mode defaults.",
-    )
-
-    parser.add_argument(
-        "--min-df",
-        type=float,
-        default=EngineConstants.MIN_DOCUMENT_FREQ.value,
-        help="Minimum document frequency (percentage 0.0-1.0 or integer count).",
+        "--tag",
+        action="append",
+        dest="tags",
+        help="Custom tags to add to generated rules (can be used multiple times)",
     )
 
 
 def run(args: argparse.Namespace) -> None:
     try:
-        # Prepare Configuration
-        try:
-            filter_col, filter_val = parse_filter_arg(args.filter)
-        except ValueError as e:
-            raise ConfigurationError(str(e)) from e
+        # 1. Load Base Config from YAML
+        # args.config comes from the parent parser in cli/args.py
+        config_path = args.config
+        logger.info(f"Loading configuration from: {config_path}")
 
-        logger.info(f"Starting generation in {args.mode} mode ...")
+        # Load raw dict; empty if file missing (handled in load_config defaults/errors)
+        raw_config = load_config(config_path)
 
-        # Build the specific Configuration based on Engine selection
-        extractor_config: BaseExtractorConfig
+        # 2. Apply Dot-Notation Overrides (--set)
+        # e.g. --set engine.min_ngram=4
+        raw_config = apply_overrides(raw_config, args.set)
 
-        # Determine threshold
-        if args.threshold is not None:
-            score_threshold = args.threshold
-        else:
-            score_threshold = (
-                EngineConstants.THRESHOLD_STRICT.value
-                if args.mode == "strict"
-                else EngineConstants.THRESHOLD_LOOSE.value
-            )
+        # 3. Apply Explicit CLI Argument Overrides
+        # We manually map top-level CLI args to the config structure
+        if args.output:
+            raw_config["output_path"] = str(args.output)
 
-        log_run_config(
-            logger,
-            args,
-            {
-                "calculated_threshold": score_threshold,
-                "threshold_source": "Override" if args.threshold else "Default",
-            },
+        # Adversarial Adapter Overrides
+        if "adversarial_adapter" not in raw_config:
+            raw_config["adversarial_adapter"] = {}
+        if args.adapter:
+            raw_config["adversarial_adapter"]["type"] = args.adapter
+
+        # Benign Adapter Overrides
+        if "benign_adapter" not in raw_config:
+            raw_config["benign_adapter"] = {}
+        if args.benign_adapter:
+            raw_config["benign_adapter"]["type"] = args.benign_adapter
+
+        # Engine Overrides
+        if "engine" not in raw_config:
+            raw_config["engine"] = {}
+        if args.engine:
+            raw_config["engine"]["type"] = args.engine
+        if args.rule_date:
+            raw_config["engine"]["rule_date"] = args.rule_date
+
+        # 4. Validate & Instantiate AppConfig
+        # This converts the dict into strict Pydantic models
+        app_config = AppConfig(**raw_config)
+
+        # Extract types for factories (defaulting to constants if missing)
+        # We access the raw dictionary or extra fields for 'type' since it might not
+        # be explicit in BaseEngineConfig
+        engine_type = raw_config.get("engine", {}).get("type") or EngineType.NGRAM.value
+        adv_adapter_type = (
+            raw_config.get("adversarial_adapter", {}).get("type")
+            or AdapterType.JSONL.value
+        )
+        benign_adapter_type = (
+            raw_config.get("benign_adapter", {}).get("type") or AdapterType.JSONL.value
         )
 
-        if args.engine == EngineType.NGRAM.value:
-            logger.debug("Configuring N-Gram Engine parameters...")
-            extractor_config = NgramConfig(
-                score_threshold=score_threshold,
-                min_ngram_length=args.min_ngram,
-                max_ngram_length=args.max_ngram,
-                rule_date=args.rule_date,
-                min_document_frequency=args.min_df,
-            )
-        else:
-            # Placeholder for other engines if implemented
-            # For now, defaulting to base or erroring if strict checking wasn't done by
-            # argparse
-            # Stub engine might need config too.
-            extractor_config = BaseExtractorConfig(rule_date=args.rule_date)
-            if args.engine != EngineType.STUB.value:
-                # Should be caught by argparse choices but good for safety
-                pass
+        # Log the final resolved configuration for debugging
+        log_run_config(logger, args, app_config.model_dump())
+        logger.info(f"Starting generation with Engine: {engine_type}")
 
-        # Initialize Engine & Load Data
+        # 5. Initialize Components
         try:
-            logger.info(f"Initializing engine: {args.engine}")
-            extractor = get_extractor(args.engine, extractor_config)
+            # Engine
+            engine = get_engine(engine_type, app_config.engine)
 
-            logger.info(f"Loading adversarial data: {args.input_path}")
-            adv_adapter = get_adapter(args.adapter, DatasetType.ADVERSARIAL)
-            adv_stream = adv_adapter.load(args.input_path, config_name=args.config_name)
+            # Adversarial Data
+            # Note: Input path can come from CLI or Config (though CLI arg input_path
+            # is usually required for file adapters)
+            adv_path = (
+                args.input_path
+            )  # CLI input path takes priority if we had a config field for it
+            if not adv_path:
+                raise ConfigurationError("No input path provided (via CLI argument).")
 
-            if filter_col and filter_val:
-                adv_stream = filter_stream(adv_stream, filter_col, filter_val)
+            logger.info(f"Loading adversarial data: {adv_path}")
+            adv_adapter = get_adapter(adv_adapter_type, DatasetType.ADVERSARIAL)
+            # We pass the whole adapter config as kwargs so 'config_name', 'split'
+            # etc. are passed through
+            adv_stream = adv_adapter.load(
+                adv_path, **app_config.adversarial_adapter.model_dump(exclude={"type"})
+            )
 
-            logger.info(f"Loading benign data: {args.benign}")
-            benign_adapter = get_adapter(args.benign_adapter, DatasetType.BENIGN)
-            benign_stream = benign_adapter.load(args.benign)
+            # Benign Data
+            benign_path = args.benign
+            if not benign_path:
+                raise ConfigurationError("No benign dataset path provided (--benign).")
+
+            logger.info(f"Loading benign data: {benign_path}")
+            benign_adapter = get_adapter(benign_adapter_type, DatasetType.BENIGN)
+            benign_stream = benign_adapter.load(
+                benign_path, **app_config.benign_adapter.model_dump(exclude={"type"})
+            )
 
             # Execution
-            rules = extractor.extract(adversarial=adv_stream, benign=benign_stream)
+            rules = engine.extract(adversarial=adv_stream, benign=benign_stream)
+
+            # Post-Processing: Apply Tags
+            if args.tags:
+                logger.debug(f"Applying tags to {len(rules)} rules: {args.tags}")
+                for rule in rules:
+                    # Assuming rule.tags is a list/set of strings
+                    rule.tags.extend(args.tags)
 
             # Deduplication
             if args.existing_rules and args.existing_rules.exists():
@@ -224,15 +208,12 @@ def run(args: argparse.Namespace) -> None:
                     f"Deduplicating against existing rules: {args.existing_rules}"
                 )
                 existing_payloads = parse_existing_rules(args.existing_rules)
-
                 initial_count = len(rules)
-                # Filter out rules where ANY of their strings exist in the known set
                 rules = [
                     r
                     for r in rules
                     if not any(s.value in existing_payloads for s in r.strings)
                 ]
-
                 dropped_count = initial_count - len(rules)
                 if dropped_count > 0:
                     logger.info(
@@ -241,15 +222,18 @@ def run(args: argparse.Namespace) -> None:
                     )
 
             # Output Generation
+            output_file = app_config.output_path or "generated_rules.yar"
             writer = YaraWriter()
-            writer.write(rules, args.output)
+            writer.write(rules, Path(output_file))
 
             if rules:
                 logger.info(f"Generation complete. Created {len(rules)} rules.")
             else:
                 logger.warning("Generation complete, but NO rules were created.")
+
         except (ValueError, FileNotFoundError) as e:
             raise DataError(f"Data processing failed: {str(e)}") from e
+
     except (ConfigurationError, DataError) as e:
         logger.error(f"{e.__class__.__name__}: {str(e)}")
         sys.exit(1)

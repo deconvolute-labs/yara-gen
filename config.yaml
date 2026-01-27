@@ -1,0 +1,56 @@
+# Global Output Settings
+output_path: "data/rules.yar"
+
+# -------------------------------------------------------------------------
+# Adversarial Data Adapter Configuration
+# -------------------------------------------------------------------------
+adversarial_adapter:
+  # The type of adapter (e.g. 'huggingface', 'jsonl', 'csv')
+  # Overridden by CLI arg: --adapter
+  type: "huggingface"
+  
+  # Adapter-specific parameters (passed via **kwargs to the adapter)
+  # Examples for HuggingFace:
+  config_name: "subset_name" 
+  split: "train"
+  use_auth_token: true
+
+# -------------------------------------------------------------------------
+# Benign Data Adapter Configuration
+# -------------------------------------------------------------------------
+benign_adapter:
+  # Overridden by CLI arg: --benign-adapter
+  type: "jsonl"
+  
+  # Adapter-specific parameters
+
+# -------------------------------------------------------------------------
+# Engine Configuration
+# -------------------------------------------------------------------------
+engine:
+  # The algorithm to use (e.g. 'ngram')
+  # Overridden by CLI arg: --engine
+  type: "ngram"
+
+  # Base Parameters
+  # Overwrites THRESHOLD_STRICT / THRESHOLD_LOOSE logic.
+  # Set this directly to control sensitivity.
+  score_threshold: 0.1
+  
+  # Overwrites MAX_RULES_PER_RUN
+  max_rules_per_run: 50
+  
+  rule_date: "2025-10-27"
+
+  # N-Gram Specific Parameters
+  # Overwrites DEFAULT_MIN_NGRAM
+  min_ngram_length: 3
+  
+  # Overwrites DEFAULT_MAX_NGRAM
+  max_ngram_length: 10
+  
+  # Overwrites MIN_DOCUMENT_FREQ
+  min_document_frequency: 0.01
+  
+  # Overwrites DEFAULT_BENIGN_PENALTY
+  benign_penalty_weight: 1.0
