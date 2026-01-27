@@ -2,17 +2,19 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 from yara_gen.adapters import ADAPTER_MAP, get_adapter
 from yara_gen.constants import DEFAULT_RULE_FILENAME, EngineType
 from yara_gen.engine.factory import get_engine
 from yara_gen.errors import ConfigurationError, DataError
+from yara_gen.generation.deduplication import parse_existing_rules
 from yara_gen.generation.writer import YaraWriter
 from yara_gen.models.config import AppConfig
-from yara_gen.models.text import DatasetType
+from yara_gen.models.text import DatasetType, GeneratedRule, TextSample
 from yara_gen.utils.config import apply_overrides, load_config
-from yara_gen.utils.deduplication import parse_existing_rules
 from yara_gen.utils.logger import (
     get_logger,
     log_config,
@@ -105,47 +107,145 @@ def register_args(
     )
 
 
-def run(args: argparse.Namespace) -> None:
+def _load_app_configuration(args: argparse.Namespace) -> AppConfig:
+    """Loads configuration from file and applies CLI overrides."""
+    # args.config comes from the parent parser in cli/args.py
+    config_path = getattr(args, "config", Path("generation_config.yaml"))
+    logger.info(f"Loading configuration from: {config_path}")
+
+    # Load raw dict; empty if file missing (handled in load_config defaults/errors)
+    raw_config = load_config(config_path)
+
+    # Apply Dot-Notation Overrides (--set)
+    # e.g. --set engine.min_ngram=4
+    raw_config = apply_overrides(raw_config, getattr(args, "set", None))
+
+    # Apply Explicit CLI Argument Overrides
+    # We manually map top-level CLI args to the config structure
+    if args.output:
+        raw_config["output_path"] = str(args.output)
+
+    # Adversarial Adapter Overrides
+    if "adversarial_adapter" not in raw_config:
+        raw_config["adversarial_adapter"] = {}
+    if args.adversarial_adapter:
+        raw_config["adversarial_adapter"]["type"] = args.adversarial_adapter
+
+    # Benign Adapter Overrides
+    if "benign_adapter" not in raw_config:
+        raw_config["benign_adapter"] = {}
+    if args.benign_adapter:
+        raw_config["benign_adapter"]["type"] = args.benign_adapter
+
+    # Engine Overrides
+    if "engine" not in raw_config:
+        raw_config["engine"] = {}
+    if args.engine:
+        raw_config["engine"]["type"] = args.engine
+    if args.rule_date:
+        raw_config["engine"]["rule_date"] = args.rule_date
+
+    # Validate & Instantiate AppConfig
+    # This converts the dict into strict Pydantic models
+    return AppConfig(**raw_config)
+
+
+def _initialize_components(app_config: AppConfig) -> tuple[Any, Any, Any]:
+    """Initializes engine and adapters based on configuration."""
+    engine_type = app_config.engine.type
+    adv_adapter_type = app_config.adversarial_adapter.type
+    benign_adapter_type = app_config.benign_adapter.type
+
+    logger.info(f"Starting generation with Engine: {engine_type}")
+
     try:
-        # args.config comes from the parent parser in cli/args.py
-        config_path = getattr(args, "config", Path("generation_config.yaml"))
-        logger.info(f"Loading configuration from: {config_path}")
+        engine = get_engine(app_config.engine)
+        adv_adapter = get_adapter(adv_adapter_type, DatasetType.ADVERSARIAL)
+        benign_adapter = get_adapter(benign_adapter_type, DatasetType.BENIGN)
+        return engine, adv_adapter, benign_adapter
+    except ValueError as e:
+        logger.error(f"Component Initialization Error: {e}")
+        sys.exit(1)
 
-        # Load raw dict; empty if file missing (handled in load_config defaults/errors)
-        raw_config = load_config(config_path)
 
-        # Apply Dot-Notation Overrides (--set)
-        # e.g. --set engine.min_ngram=4
-        raw_config = apply_overrides(raw_config, getattr(args, "set", None))
+def _load_pipeline_data(
+    args: argparse.Namespace,
+    app_config: AppConfig,
+    adv_adapter: Any,
+    benign_adapter: Any,
+) -> tuple[Iterator[TextSample], Iterator[TextSample]]:
+    """Loads adversarial and benign data streams."""
+    try:
+        adv_path = args.input
+        if not adv_path:
+            raise ConfigurationError("No input path provided (via CLI argument).")
 
-        # Apply Explicit CLI Argument Overrides
-        # We manually map top-level CLI args to the config structure
-        if args.output:
-            raw_config["output_path"] = str(args.output)
+        logger.info(f"Loading adversarial data: {adv_path}")
+        adv_stream = adv_adapter.load(
+            adv_path, **app_config.adversarial_adapter.model_dump(exclude={"type"})
+        )
 
-        # Adversarial Adapter Overrides
-        if "adversarial_adapter" not in raw_config:
-            raw_config["adversarial_adapter"] = {}
-        if args.adversarial_adapter:
-            raw_config["adversarial_adapter"]["type"] = args.adversarial_adapter
+        benign_path = args.benign_dataset
+        if not benign_path:
+            raise ConfigurationError(
+                "No benign dataset path provided (--benign-dataset)."
+            )
 
-        # Benign Adapter Overrides
-        if "benign_adapter" not in raw_config:
-            raw_config["benign_adapter"] = {}
-        if args.benign_adapter:
-            raw_config["benign_adapter"]["type"] = args.benign_adapter
+        logger.info(f"Loading benign data: {benign_path}")
+        benign_stream = benign_adapter.load(
+            benign_path, **app_config.benign_adapter.model_dump(exclude={"type"})
+        )
 
-        # Engine Overrides
-        if "engine" not in raw_config:
-            raw_config["engine"] = {}
-        if args.engine:
-            raw_config["engine"]["type"] = args.engine
-        if args.rule_date:
-            raw_config["engine"]["rule_date"] = args.rule_date
+        return adv_stream, benign_stream
 
-        # Validate & Instantiate AppConfig
-        # This converts the dict into strict Pydantic models
-        app_config = AppConfig(**raw_config)
+    except (DataError, FileNotFoundError) as e:
+        logger.error(f"Data Processing Error: {e}")
+        sys.exit(1)
+
+
+def _apply_deduplication(
+    rules: list[GeneratedRule], existing_rules_path: Path | None
+) -> list[GeneratedRule]:
+    """Removes rules that match existing rules."""
+    if existing_rules_path and existing_rules_path.exists():
+        logger.info(f"Deduplicating against existing rules: {existing_rules_path}")
+        existing_payloads = parse_existing_rules(existing_rules_path)
+        initial_count = len(rules)
+
+        # Determine unique payloads to check
+        rules = [
+            r for r in rules if not any(s.value in existing_payloads for s in r.strings)
+        ]
+
+        dropped_count = initial_count - len(rules)
+        if dropped_count > 0:
+            logger.info(
+                f"Deduplication complete. Dropped {dropped_count} duplicate rules."
+            )
+    return rules
+
+
+def _write_results(rules: list[GeneratedRule], output_path: str) -> None:
+    """Writes generated rules to a file."""
+    try:
+        writer = YaraWriter()
+        writer.write(rules, Path(output_path))
+        if rules:
+            logger.info(f"Generation complete. Created {len(rules)} rules.")
+        else:
+            logger.warning("Generation complete, but NO rules were created.")
+    except OSError as e:
+        logger.error(f"Failed to write output file '{output_path}': {e}")
+        sys.exit(1)
+
+
+def run(args: argparse.Namespace) -> None:
+    """
+    Executes the rule generation pipeline.
+    """
+    try:
+        # 1. Load Configuration
+        app_config = _load_app_configuration(args)
 
         log_named_value(logger, "Adversarial", args.input)
         log_named_value(logger, "Benign", args.benign_dataset)
@@ -156,88 +256,29 @@ def run(args: argparse.Namespace) -> None:
         # Log the deep configuration
         log_config(logger, app_config.model_dump())
 
-        # Extract types for factories
-        # We can now trust app_config.engine.type because it is strictly validated
-        engine_type = app_config.engine.type
+        # 2. Initialize Components
+        engine, adv_adapter, benign_adapter = _initialize_components(app_config)
 
-        adv_adapter_type = app_config.adversarial_adapter.type
-        benign_adapter_type = app_config.benign_adapter.type
+        # 3. Load Data
+        adv_stream, benign_stream = _load_pipeline_data(
+            args, app_config, adv_adapter, benign_adapter
+        )
 
-        logger.info(f"Starting generation with Engine: {engine_type}")
+        # 4. Execute Extraction
+        rules = engine.extract(adversarial=adv_stream, benign=benign_stream)
 
-        # Initialize Components
-        try:
-            engine = get_engine(app_config.engine)
-            adv_adapter = get_adapter(adv_adapter_type, DatasetType.ADVERSARIAL)
-            benign_adapter = get_adapter(benign_adapter_type, DatasetType.BENIGN)
-        except ValueError as e:
-            logger.error(f"Component Initialization Error: {e}")
-            sys.exit(1)
-
-        # Data Loading
-        try:
-            adv_path = args.input
-            if not adv_path:
-                raise ConfigurationError("No input path provided (via CLI argument).")
-
-            logger.info(f"Loading adversarial data: {adv_path}")
-            adv_stream = adv_adapter.load(
-                adv_path, **app_config.adversarial_adapter.model_dump(exclude={"type"})
-            )
-
-            benign_path = args.benign_dataset
-            if not benign_path:
-                raise ConfigurationError(
-                    "No benign dataset path provided (--benign-dataset)."
-                )
-
-            logger.info(f"Loading benign data: {benign_path}")
-            benign_stream = benign_adapter.load(
-                benign_path, **app_config.benign_adapter.model_dump(exclude={"type"})
-            )
-
-            # Execute Extraction
-            # This is where DataError is likely (e.g. empty inputs, network fail)
-            rules = engine.extract(adversarial=adv_stream, benign=benign_stream)
-
-        except (DataError, FileNotFoundError) as e:
-            logger.error(f"Data Processing Error: {e}")
-            sys.exit(1)
-
-        # Post-Processing: Apply Tags
+        # 5. Post-Processing: Apply Tags
         if args.tags:
             logger.debug(f"Applying tags to {len(rules)} rules: {args.tags}")
             for rule in rules:
                 rule.tags.extend(args.tags)
 
-        # Deduplication
-        if args.existing_rules and args.existing_rules.exists():
-            logger.info(f"Deduplicating against existing rules: {args.existing_rules}")
-            existing_payloads = parse_existing_rules(args.existing_rules)
-            initial_count = len(rules)
-            rules = [
-                r
-                for r in rules
-                if not any(s.value in existing_payloads for s in r.strings)
-            ]
-            dropped_count = initial_count - len(rules)
-            if dropped_count > 0:
-                logger.info(
-                    f"Deduplication complete. Dropped {dropped_count} duplicate rules."
-                )
+        # 6. Deduplication
+        rules = _apply_deduplication(rules, args.existing_rules)
 
-        # Output Generation
+        # 7. Output Generation
         output_file = app_config.output_path or DEFAULT_RULE_FILENAME
-        try:
-            writer = YaraWriter()
-            writer.write(rules, Path(output_file))
-            if rules:
-                logger.info(f"Generation complete. Created {len(rules)} rules.")
-            else:
-                logger.warning("Generation complete, but NO rules were created.")
-        except OSError as e:
-            logger.error(f"Failed to write output file '{output_file}': {e}")
-            sys.exit(1)
+        _write_results(rules, output_file)
 
     except ConfigurationError as e:
         logger.error(f"Configuration Error: {e}")

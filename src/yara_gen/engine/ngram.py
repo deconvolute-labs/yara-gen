@@ -9,7 +9,7 @@ from yara_gen.constants import EngineConstants
 from yara_gen.engine.base import BaseEngine
 from yara_gen.errors import DataError
 from yara_gen.generation.builder import RuleBuilder
-from yara_gen.models.config import NgramEngineConfig
+from yara_gen.models.engine_config import NgramEngineConfig
 from yara_gen.models.text import GeneratedRule, TextSample
 from yara_gen.utils.logger import get_logger
 from yara_gen.utils.progress import ProgressGenerator

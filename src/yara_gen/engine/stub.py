@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 
 from yara_gen.engine.base import BaseEngine
-from yara_gen.models.config import BaseEngineConfig
+from yara_gen.models.engine_config import BaseEngineConfig
 from yara_gen.models.text import GeneratedRule, RuleString, TextSample
 from yara_gen.utils.logger import get_logger
 

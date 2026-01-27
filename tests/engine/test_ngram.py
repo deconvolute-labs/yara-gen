@@ -2,7 +2,7 @@ import pytest
 from scipy import sparse
 
 from yara_gen.engine.ngram import NgramEngine
-from yara_gen.models.config import NgramEngineConfig
+from yara_gen.models.engine_config import NgramEngineConfig
 from yara_gen.models.text import DatasetType, TextSample
 
 

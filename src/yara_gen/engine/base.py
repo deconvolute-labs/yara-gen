@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
-from yara_gen.models.config import BaseEngineConfig
+from yara_gen.models.engine_config import BaseEngineConfig
 from yara_gen.models.text import GeneratedRule, TextSample
 
 

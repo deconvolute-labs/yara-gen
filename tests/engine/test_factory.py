@@ -1,7 +1,7 @@
 from yara_gen.engine.factory import get_engine
 from yara_gen.engine.ngram import NgramEngine
 from yara_gen.engine.stub import StubEngine
-from yara_gen.models.config import BaseEngineConfig, NgramEngineConfig
+from yara_gen.models.engine_config import BaseEngineConfig, NgramEngineConfig
 
 
 class TestEngineFactory:

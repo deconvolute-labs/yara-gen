@@ -5,6 +5,16 @@ from yara_gen.cli.commands import generate, prepare
 
 
 def parse_args() -> argparse.Namespace:
+    """
+    Parses command-line arguments for the global application.
+
+    Defines shared arguments (verbose, config, set) and registers
+    sub-commands (prepare, generate).
+
+    Returns:
+        argparse.Namespace: The populated argument namespace containing
+        both global flags and command-specific parameters.
+    """
     shared_parser = argparse.ArgumentParser(add_help=False)
 
     shared_parser.add_argument(

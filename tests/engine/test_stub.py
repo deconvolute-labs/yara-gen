@@ -1,7 +1,7 @@
 import pytest
 
 from yara_gen.engine.stub import StubEngine
-from yara_gen.models.config import BaseEngineConfig
+from yara_gen.models.engine_config import BaseEngineConfig
 from yara_gen.models.text import DatasetType, TextSample
 
 

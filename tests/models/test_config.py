@@ -1,12 +1,11 @@
 from typing import Any
 
 from yara_gen.constants import EngineConstants
+from yara_gen.models.adapter_config import AdapterConfig
 from yara_gen.models.config import (
-    AdapterConfig,
     AppConfig,
-    NgramEngineConfig,
-    StubEngineConfig,
 )
+from yara_gen.models.engine_config import NgramEngineConfig, StubEngineConfig
 
 
 def test_ngram_engine_config_defaults() -> None:
