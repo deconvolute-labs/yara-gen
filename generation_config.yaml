@@ -1,6 +1,10 @@
 # Global Output Settings
-output_path: "data/rules.yar"
+output_path: "data/tests/autopath-rules.yar"
 
+tags:
+  - "generated"
+  - "category:injection"
+  
 adversarial_adapter:
   type: "jsonl"
   

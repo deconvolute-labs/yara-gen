@@ -25,13 +25,19 @@ The file has three main sections:
 # Global Output
 output_path: "rules.yar"
 
+# Tags for rules
+tags:
+  - "generated"
+  - "category:injection"
+
 # Adversarial Data Source
 adversarial_adapter:
-  type: "huggingface"
-  # Adapter-specific args are passed directly
-  config_name: "subset_name"
-  split: "train"
-  # token: "hf_..."
+  type: "jsonl" # Default: Expects local JSONL (e.g. from 'prepare' command)
+  
+  # To use Hugging Face directly during generation:
+  # type: "huggingface"
+  # config_name: "subset_name"
+  # split: "train"
 
 # Benign Data Source
 benign_adapter:
@@ -54,12 +60,46 @@ engine:
 ```
 
 ## 3. Command: `prepare`
-Normalizes large datasets into JSONL. This command is configured purely via CLI arguments and flags. It does not read `generation_config.yaml`.
+Normalizes large datasets into JSONL. 
 
-Basic Usage:
+Note: This command is strictly CLI-driven and does not use the config file.
+
+
+#### Smart Auto-Detection
+
+You generally do not need to specify an adapter. The tool detects it based on your input:
+
+- Hugging Face: If the input is not a local file (e.g. user/repo), it defaults to huggingface.
+- CSV: If the input is a local file ending in .csv, it defaults to generic-csv.
+- Raw Text: Any other local file defaults to raw-text.
+
+
+**Usage Examples**
+
+Hugging Face (Auto-Detected):
+
 ```bash
-ygen prepare raw_data.csv --output clean_data.jsonl --adapter generic-csv
+ygen prepare "rubend18/ChatGPT-Jailbreak-Prompts" --output jailbreaks.jsonl
 ```
+
+Manual Override: You can force a specific adapter using `--adapter` (or -a).
+
+```bash
+# Force 'raw-text' parsing for a file with a weird extension
+ygen prepare data.xyz --output clean.jsonl --adapter raw-text
+```
+
+**Advanced: Hugging Face Arguments**
+
+Download and stream directly from the Hub. Use `--set` to pass specific arguments like `config_name` or `split`.
+
+```bash
+ygen prepare "rubend18/ChatGPT-Jailbreak-Prompts" \
+  --output jailbreaks.jsonl \
+  --set adapter.split=train \
+  --set adapter.config_name=default
+```
+
 
 #### Universal Filtering
 
@@ -70,21 +110,10 @@ Filter rows for all adapters using `--filter`. Format: `column=value`.
 ygen prepare data.csv --output clean.jsonl --filter "label=jailbreak"
 ```
 
-### Hugging Face Adapter
-
-Download and stream directly from the Hub. Use `--set` to pass specific arguments like splits or tokens.
-
-Example:
-```bash
-ygen prepare "rubend18/ChatGPT-Jailbreak-Prompts" \
-  --adapter huggingface \
-  --output jailbreaks.jsonl \
-  --set adapter.split=train \
-  --set adapter.config_name=default
-```
-
 ## 4. Command: generate
-Extracts signatures and writes YARA rules.
+Extracts signatures and writes YARA rules. 
+
+**Note:** This command reads defaults from `generation_config.yaml`.
 
 Basic Usage:
 ```bash
@@ -129,18 +158,15 @@ ygen generate input.jsonl --tag "experimental" --tag "v1" --rule-date "2023-01-0
 ```
 
 ## 5. Advanced Configuration (--set)
-The --set flag overrides configuration values using dot notation. It creates nested structures automatically.
+The `--set` flag overrides configuration values using dot notation. It creates nested structures automatically.
 
 Syntax: `key.subkey=value`
 
 #### Type Inference: The tool automatically detects types:
 
 - `true` / `false` → Boolean
-
 - `123` → Integer
-
 - `0.5` → Float
-
 - `Other` → String
 
 ### Examples:
@@ -160,4 +186,10 @@ Switch Hugging Face config subset:
 
 ```bash
 --set adversarial_adapter.config_name=red_team_v2
+```
+
+Example streaming from huggingface for adversarial and local benign:
+
+```bash
+ygen generate TrustAIRLab/in-the-wild-jailbreak-prompts --adversarial-adapter huggingface --benign-dataset benign.jsonl --set adversarial_adapter.config_name=jailbreak_2023_05_07
 ```

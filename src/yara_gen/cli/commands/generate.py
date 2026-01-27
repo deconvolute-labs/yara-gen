@@ -145,6 +145,17 @@ def _load_app_configuration(args: argparse.Namespace) -> AppConfig:
     if args.rule_date:
         raw_config["engine"]["rule_date"] = args.rule_date
 
+    # Merge tags
+    config_tags = raw_config.get("tags", [])
+    if not isinstance(config_tags, list):
+        config_tags = []
+
+    if args.tags:
+        for tag in args.tags:
+            if tag not in config_tags:
+                config_tags.append(tag)
+
+    raw_config["tags"] = config_tags
     # Validate & Instantiate AppConfig
     # This converts the dict into strict Pydantic models
     return AppConfig(**raw_config)
@@ -244,7 +255,7 @@ def run(args: argparse.Namespace) -> None:
     Executes the rule generation pipeline.
     """
     try:
-        # 1. Load Configuration
+        # Load Configuration
         app_config = _load_app_configuration(args)
 
         log_named_value(logger, "Adversarial", args.input)
@@ -256,27 +267,27 @@ def run(args: argparse.Namespace) -> None:
         # Log the deep configuration
         log_config(logger, app_config.model_dump())
 
-        # 2. Initialize Components
+        # Initialize Components
         engine, adv_adapter, benign_adapter = _initialize_components(app_config)
 
-        # 3. Load Data
+        # Load Data
         adv_stream, benign_stream = _load_pipeline_data(
             args, app_config, adv_adapter, benign_adapter
         )
 
-        # 4. Execute Extraction
+        # Execute Extraction
         rules = engine.extract(adversarial=adv_stream, benign=benign_stream)
 
-        # 5. Post-Processing: Apply Tags
-        if args.tags:
-            logger.debug(f"Applying tags to {len(rules)} rules: {args.tags}")
+        # Post-Processing: Apply Tags
+        if app_config.tags:
+            logger.debug(f"Applying tags to {len(rules)} rules: {app_config.tags}")
             for rule in rules:
-                rule.tags.extend(args.tags)
+                rule.tags.extend(app_config.tags)
 
-        # 6. Deduplication
+        # Deduplication
         rules = _apply_deduplication(rules, args.existing_rules)
 
-        # 7. Output Generation
+        # Output Generation
         output_file = app_config.output_path or DEFAULT_RULE_FILENAME
         _write_results(rules, output_file)
 
