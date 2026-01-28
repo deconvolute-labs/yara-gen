@@ -20,8 +20,6 @@ def get_engine(config: BaseEngineConfig) -> BaseEngine[BaseEngineConfig]:
     Raises:
         ConfigurationError: If the engine type (config.type) is unknown.
     """
-    # Mapping of names to classes
-    # We map 'ngram' to StubEngine temporarily until we write the real one
     engine_map: dict[str, type[BaseEngine[Any]]] = {
         "stub": StubEngine,
         "ngram": NgramEngine,

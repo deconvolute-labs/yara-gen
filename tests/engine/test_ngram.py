@@ -98,9 +98,7 @@ class TestSetCoverLogic:
         assert len(selected) >= 1
         assert selected[0]["text"] == "Rule C"
 
-        # Since C covers everything, we expect it to stop there (or pick others if they
-        # add nothing? The logic breaks if coverage is 0. C covers everything,
-        # so A and B add 0 new coverage.
+        # Since C covers everything, we expect it to stop there
         assert len(selected) == 1
 
     def test_iterative_selection(self, engine):

@@ -34,22 +34,22 @@ def setup_logger(
     if logger.handlers:
         return logger
 
-    # Set Level
+    # Set level
     numeric_level = getattr(logging, level.upper(), logging.INFO)
     logger.setLevel(numeric_level)
 
-    # Create Console Handler (Standard Output)
+    # Create console handler (standard output)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(numeric_level)
 
-    # Create Formatter
+    # Create formatter
     formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
     console_handler.setFormatter(formatter)
 
-    # Add Console Handler
+    # Add console handler
     logger.addHandler(console_handler)
 
-    # Create File Handler if requested
+    # Create file handler if requested
     if log_file:
         from pathlib import Path
 

@@ -15,8 +15,8 @@ def test_generate_dot_notation_overrides(tmp_path: Path, mocker: MagicMock) -> N
     input_dir = tmp_path / "data"
     input_dir.mkdir()
 
-    # Create config.yaml with specific defaults
-    config_file = tmp_path / "config.yaml"
+    # Create generation_config.yaml with specific defaults
+    config_file = tmp_path / "generation_config.yaml"
     config_data = {
         "engine": {
             "type": "ngram",
@@ -70,8 +70,6 @@ def test_generate_dot_notation_overrides(tmp_path: Path, mocker: MagicMock) -> N
     assert mock_get_engine.called, "get_engine was not called"
 
     # Retrieve the configuration object passed to get_engine
-    # Retrieve the configuration object passed to get_engine
-    # Signature: get_engine(config_model)
     args, _ = mock_get_engine.call_args
     engine_config_arg = args[0]
 
@@ -220,16 +218,6 @@ def test_generate_adapter_overrides(tmp_path: Path, mocker: MagicMock) -> None:
     from yara_gen.models.text import DatasetType
 
     main()
-
-    # Check that get_adapter was called with the overridden types
-    # Expected calls:
-    # 1. ("huggingface", DatasetType.ADVERSARIAL)
-    # 2. ("csv", DatasetType.BENIGN)
-    # Order depends on implementation, so checks needs to be robust or order-aware.
-    # Implementation:
-    # adv_adapter = get_adapter(adv_adapter_type, DatasetType.ADVERSARIAL)
-    # benign_adapter = get_adapter(benign_adapter_type, DatasetType.BENIGN)
-    # So both are called.
 
     # We can inspect call_args_list
     assert mock_get_adapter.call_count == 2, "get_adapter should be called twice"

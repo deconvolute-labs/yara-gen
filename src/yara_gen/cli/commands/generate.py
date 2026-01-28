@@ -40,7 +40,7 @@ def register_args(
         "input", type=Path, nargs="?", help="Path to the adversarial dataset"
     )
 
-    # Note: Defaults are set to None to allow config.yaml to take precedence
+    # Note: Defaults are set to None to allow generation_config.yaml to take precedence
     # unless the user explicitly provides the flag.
     parser.add_argument(
         "--adversarial-adapter",
@@ -89,7 +89,6 @@ def register_args(
         help=("The algorithm used to generate rules (overrides config)"),
     )
 
-    # Generic Rule Parameters (kept in CLI as requested)
     parser.add_argument(
         "--rule-date",
         type=str,
@@ -108,7 +107,9 @@ def register_args(
 
 
 def _load_app_configuration(args: argparse.Namespace) -> AppConfig:
-    """Loads configuration from file and applies CLI overrides."""
+    """
+    Loads configuration from file and applies CLI overrides.
+    """
     # args.config comes from the parent parser in cli/args.py
     config_path = getattr(args, "config", Path("generation_config.yaml"))
     logger.info(f"Loading configuration from: {config_path}")
@@ -116,28 +117,27 @@ def _load_app_configuration(args: argparse.Namespace) -> AppConfig:
     # Load raw dict; empty if file missing (handled in load_config defaults/errors)
     raw_config = load_config(config_path)
 
-    # Apply Dot-Notation Overrides (--set)
+    # Apply Dot-Notation overrides (--set)
     # e.g. --set engine.min_ngram=4
     raw_config = apply_overrides(raw_config, getattr(args, "set", None))
 
-    # Apply Explicit CLI Argument Overrides
-    # We manually map top-level CLI args to the config structure
+    # Apply explicit CLI argument overrides
     if args.output:
         raw_config["output_path"] = str(args.output)
 
-    # Adversarial Adapter Overrides
+    # Adversarial adapter overrides
     if "adversarial_adapter" not in raw_config:
         raw_config["adversarial_adapter"] = {}
     if args.adversarial_adapter:
         raw_config["adversarial_adapter"]["type"] = args.adversarial_adapter
 
-    # Benign Adapter Overrides
+    # Benign adapter overrides
     if "benign_adapter" not in raw_config:
         raw_config["benign_adapter"] = {}
     if args.benign_adapter:
         raw_config["benign_adapter"]["type"] = args.benign_adapter
 
-    # Engine Overrides
+    # Engine overrides
     if "engine" not in raw_config:
         raw_config["engine"] = {}
     if args.engine:
@@ -156,13 +156,14 @@ def _load_app_configuration(args: argparse.Namespace) -> AppConfig:
                 config_tags.append(tag)
 
     raw_config["tags"] = config_tags
-    # Validate & Instantiate AppConfig
-    # This converts the dict into strict Pydantic models
+
     return AppConfig(**raw_config)
 
 
 def _initialize_components(app_config: AppConfig) -> tuple[Any, Any, Any]:
-    """Initializes engine and adapters based on configuration."""
+    """
+    Initializes engine and adapters based on configuration.
+    """
     engine_type = app_config.engine.type
     adv_adapter_type = app_config.adversarial_adapter.type
     benign_adapter_type = app_config.benign_adapter.type
@@ -185,7 +186,9 @@ def _load_pipeline_data(
     adv_adapter: Any,
     benign_adapter: Any,
 ) -> tuple[Iterator[TextSample], Iterator[TextSample]]:
-    """Loads adversarial and benign data streams."""
+    """
+    Loads adversarial and benign data streams.
+    """
     try:
         adv_path = args.input
         if not adv_path:
@@ -217,7 +220,9 @@ def _load_pipeline_data(
 def _apply_deduplication(
     rules: list[GeneratedRule], existing_rules_path: Path | None
 ) -> list[GeneratedRule]:
-    """Removes rules that match existing rules."""
+    """
+    Removes rules that match existing rules.
+    """
     if existing_rules_path and existing_rules_path.exists():
         logger.info(f"Deduplicating against existing rules: {existing_rules_path}")
         existing_payloads = parse_existing_rules(existing_rules_path)
@@ -237,7 +242,9 @@ def _apply_deduplication(
 
 
 def _write_results(rules: list[GeneratedRule], output_path: str) -> None:
-    """Writes generated rules to a file."""
+    """
+    Writes generated rules to a file.
+    """
     try:
         writer = YaraWriter()
         writer.write(rules, Path(output_path))
@@ -255,7 +262,6 @@ def run(args: argparse.Namespace) -> None:
     Executes the rule generation pipeline.
     """
     try:
-        # Load Configuration
         app_config = _load_app_configuration(args)
 
         log_named_value(logger, "Adversarial", args.input)
@@ -267,10 +273,8 @@ def run(args: argparse.Namespace) -> None:
         # Log the deep configuration
         log_config(logger, app_config.model_dump())
 
-        # Initialize Components
         engine, adv_adapter, benign_adapter = _initialize_components(app_config)
 
-        # Load Data
         adv_stream, benign_stream = _load_pipeline_data(
             args, app_config, adv_adapter, benign_adapter
         )

@@ -30,7 +30,7 @@ class RuleBuilder:
         """
         score_val = round(score, 4)
 
-        # 1. Generate Smart Name
+        # Generate smart name
         # Sanitize: "Ignore previous" -> "ignore_previous"
         clean_text = re.sub(r"[^a-zA-Z0-9]+", "_", text).strip("_").lower()
 
@@ -43,7 +43,6 @@ class RuleBuilder:
         text_hash = hashlib.md5(text.encode("utf-8")).hexdigest()[:4]  # noqa
         rule_name = f"auto_{short_slug}_{text_hash}"
 
-        # 2. Build Object
         return GeneratedRule(
             name=rule_name,
             tags=["generated", "prompt_injection"],

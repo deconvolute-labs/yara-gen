@@ -77,7 +77,7 @@ class NgramEngine(BaseEngine[NgramEngineConfig]):
             ValueError: If the adversarial dataset is empty or if vectorization fails
             due
         """
-        # 1. Streaming setup
+        # Streaming setup
         # We need to peek at the first adversarial item to get the 'source' name,
         # but we cannot consume the iterator.
         adv_iterator = iter(adversarial)
@@ -98,17 +98,11 @@ class NgramEngine(BaseEngine[NgramEngineConfig]):
         )
 
         # We create a text generator for the vectorizer
-        # Note: We can't access .source anymore after this without complex tee-ing,
-        # which is why we peeked above.
         adv_texts = (s.text for s in adv_stream_tracked)
-
-        # Benign is simpler, we just need the texts
         benign_texts = (s.text for s in benign)
 
-        # 2. Vectorization & Counting
         # We use a single vectorizer to handle both datasets. This ensures the
         # vocabulary (feature indices) is identical for efficient numpy operations.
-        # min_df=0.01: A phrase must appear in 1% of attacks to be worth checking.
         vectorizer = CountVectorizer(
             ngram_range=(
                 self.config.min_ngram,
@@ -138,9 +132,8 @@ class NgramEngine(BaseEngine[NgramEngineConfig]):
             f"Analyzed {len(feature_names)} candidate n-grams from {n_adv} samples."
         )
 
-        # 3. Benign Cross-Reference
-        # Note: vectorizer is already fitted, so we use transform()
-        # We handle the case where benign might be empty
+        # Benign Cross-Reference
+        # Vectorizer is already fitted, so we use transform()
         try:
             X_benign = vectorizer.transform(benign_texts)
             benign_counts = np.array(X_benign.sum(axis=0)).flatten()
@@ -155,7 +148,7 @@ class NgramEngine(BaseEngine[NgramEngineConfig]):
 
         adv_counts = np.array(X_adv.sum(axis=0)).flatten()
 
-        # 4. Differential Scoring
+        # Differential Scoring
         # We calculate frequency vectors.
         # Formula: Score = Freq_Adv - (Penalty * Freq_Benign)
         freq_adv = adv_counts / n_adv
@@ -199,18 +192,18 @@ class NgramEngine(BaseEngine[NgramEngineConfig]):
         if not candidates:
             return []
 
-        # 5. Optimization: Subsumption (String Deduplication)
+        # Optimization: Subsumption (String Deduplication)
         # We remove short phrases that are fully contained in longer phrases
         # if the longer phrase has a similar or better score.
         candidates = self._filter_subsumed(candidates)
         logger.info(f"Reduced to {len(candidates)} candidates after subsumption check.")
 
-        # 6. Optimization: Greedy Set Cover
+        # Optimization: Greedy Set Cover
         # We select the smallest set of rules that covers the most adversarial samples.
         selected_candidates = self._greedy_set_cover(candidates, X_adv, n_adv)
         logger.info(f"Selected top {len(selected_candidates)} rules via Set Cover.")
 
-        # 7. Convert to GeneratedRule objects
+        # Convert to GeneratedRule objects
         return [
             RuleBuilder.build_from_ngram(
                 text=c["text"],
@@ -230,8 +223,8 @@ class NgramEngine(BaseEngine[NgramEngineConfig]):
 
         Why?
         If we have "ignore previous" (score 0.9) and "ignore previous instructions"
-        (score 0.95),
-        we prefer the longer one because it is more specific and less likely to FP.
+        (score 0.95), we prefer the longer one because it is more specific and less
+        likely to FP.
 
         However, if the shorter one has a MUCH better score (e.g. 1.0 vs 0.5),
         we keep the shorter one because the longer one is missing too many attacks.
@@ -280,8 +273,7 @@ class NgramEngine(BaseEngine[NgramEngineConfig]):
         selected: list[dict[str, Any]] = []
 
         # Pre-compute the column vectors for our filtered candidates to avoid sparse
-        # indexing in loop
-        # Format: {candidate_idx_in_list: dense_boolean_array}
+        # indexing in loop. Format: {candidate_idx_in_list: dense_boolean_array}
         candidate_vectors = {}
         for i, cand in enumerate(candidates):
             col_idx = cand["original_index"]

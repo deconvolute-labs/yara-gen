@@ -89,7 +89,7 @@ class HuggingFaceAdapter(BaseAdapter):
                 if not text_content:
                     continue
 
-                # Metadata is everything EXCEPT the text column
+                # Metadata is everything except the text column
                 metadata = {k: v for k, v in row.items() if k != target_column}
 
                 yield TextSample(

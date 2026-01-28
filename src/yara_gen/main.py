@@ -16,7 +16,7 @@ def main() -> None:
     """
     args = parse_args()
 
-    # Construct Log Filename
+    # Construct log filename
     # Schema: logs_<command>_<input_path name only>_<timestamp>.log
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -41,7 +41,7 @@ def main() -> None:
                     "config_name", adv_cfg.get("type", "batch_run")
                 )
             except Exception:
-                # If config load fails here, we ignore it; generate.py will handle the
+                # If config load fails here, we ignore it, generate.py will handle the
                 # error properly
                 input_name = "batch_run"
 

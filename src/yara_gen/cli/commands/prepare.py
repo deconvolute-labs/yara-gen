@@ -73,7 +73,9 @@ def register_args(
 
 
 def _get_adapter_type(args: argparse.Namespace) -> str:
-    """Detects adapter type from arguments or file extension."""
+    """
+    Detects adapter type from arguments or file extension.
+    """
     if args.adapter is not None:
         return str(args.adapter)
 
@@ -95,7 +97,9 @@ def _get_adapter_type(args: argparse.Namespace) -> str:
 
 
 def _build_configuration(args: argparse.Namespace) -> PrepareConfig:
-    """Builds and validates the configuration."""
+    """
+    Builds and validates the configuration.
+    """
     adapter_type = _get_adapter_type(args)
 
     # Initialize configuration structure
@@ -113,14 +117,15 @@ def _build_configuration(args: argparse.Namespace) -> PrepareConfig:
     except Exception as e:
         logger.error(f"Adapter Configuration Error: {e}")
         sys.exit(1)
-        # sys.exit(1) is unreachable here for mypy, but good for runtime safety.
         raise  # Should handle sys.exit in caller or here clearly
 
 
 def _get_dataset_stream(
     input_path: Path, adapter_config: AdapterConfig
 ) -> Iterator[TextSample]:
-    """Initializes adapter and loads the data stream."""
+    """
+    Initializes adapter and loads the data stream.
+    """
     try:
         adapter = get_adapter(adapter_config.type, DatasetType.RAW)
     except ValueError as e:
@@ -140,7 +145,9 @@ def _get_dataset_stream(
 def _write_output(
     stream: Iterator[TextSample], output_path: Path, limit: int | None
 ) -> None:
-    """Writes the stream to the output file."""
+    """
+    Writes the stream to the output file.
+    """
     try:
         count = 0
         # Ensure parent dir exists
