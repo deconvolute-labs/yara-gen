@@ -187,6 +187,8 @@ First, ensure you have the visualization dependencies installed:
 uv sync --group plots
 ```
 
+**Note:** Currenlty, the scripts dir is not included in the package, so you must clone the repo in order to get them.
+
 Then run the visualizer on your results file:
 
 ```bash
