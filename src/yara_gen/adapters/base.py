@@ -26,7 +26,7 @@ class BaseAdapter(ABC):
 
         Args:
             source: Path to the input file
-            **kwargs: Adapter-specific arguments (e.g., column names for CSV)
+            **kwargs: Adapter-specific arguments (e.g. column names for CSV)
 
         Yields:
             TextSample: A normalized data point

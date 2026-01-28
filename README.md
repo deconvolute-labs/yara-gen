@@ -5,14 +5,12 @@
 [![PyPI version](https://img.shields.io/pypi/v/yara-gen.svg?color=green)](https://pypi.org/project/yara-gen/)
 [![Supported Python version](https://img.shields.io/badge/python-3.13-blue.svg?)](https://pypi.org/project/yara-gen/)
 
-⚠️ Alpha version - hyperparameters and API might change
 
 ## Data-Driven YARA Rules from Adversarial and Benign Samples
 
 Yara-Gen automatically generates YARA rules from adversarial and benign text datasets. It produces compact, high-precision rules that integrate with the [Deconvolute SDK](https://github.com/deconvolute-labs/deconvolute) for prompt injection and AI system security.
 
 For a detailed explanation of the algorithm and design choices, see the [blog post](https://deconvoluteai.com/blog/yara-rules-llm-prompt-security?utm_source=github&utm_campaign=yara-gen&utm_medium=readme-top).
-
 
 ## Installation
 
@@ -48,12 +46,11 @@ Here are some basic commands. For a complete guide on configuration, dot-notatio
 
 ### ygen prepare
 
-Prepares large benign datasets for efficient rule generation. Use this when your control set is large or expensive to parse repeatedly.
+Prepares large benign datasets for efficient rule generation. Use this when your control set is large or expensive to parse repeatedly. You can for example stream from Huggingface datasets like this:
 
 ```bash
-ygen prepare ./data/emails.csv \
-  --adapter generic-csv \
-  --output ./data/benign_emails.jsonl
+ygen prepare deepset/prompt-injections  \
+--output ./data/deepset.jsonl
 ```
 
 ### ygen generate
@@ -61,10 +58,12 @@ ygen prepare ./data/emails.csv \
 Generates YARA rules from adversarial inputs and validates against a benign control set. This is the main command you will use.
 
 ```bash
-ygen generate ./data/jailbreaks.csv \
-  --adapter generic-csv \
-  --benign ./data/benign_emails.jsonl \
-  --output ./data/jailbreak_defenses.yar
+ygen generate ./data/jailbreaks.jsonl \
+  --adversarial-adapter jsonl \
+  --benign-dataset ./data/benign_emails.jsonl \
+  --benign-adaper jsonl \
+  --output ./data/jailbreak_defenses.yar \
+  --engine ngram
 ```
 
 ## Common Workflows
@@ -73,8 +72,8 @@ ygen generate ./data/jailbreaks.csv \
 
 
 ```bash
-ygen prepare wiki_dump.xml \
-  --adapter wikipedia-xml \
+ygen prepare wiki_dump.csv \
+  --adapter wikipedia.csv \
   --output benign_wikipedia.jsonl
 ```
 
@@ -82,7 +81,7 @@ ygen prepare wiki_dump.xml \
 
 ```bash
 ygen generate attacks.csv \
-  --benign control.jsonl \
+  --benign-dataset control.jsonl \
   --existing-rules baseline.yar \
   --output updated_rules.yar
 ```
@@ -93,7 +92,7 @@ Control how aggressive the rule generation should be. The `--set` flag allows us
 
 ```bash
 ygen generate attacks.csv \
-  --benign control.jsonl \
+  --benign-dataset control.jsonl \
   --set engine.score_threshold=0.9 \
   --output rules.yar
 ```
@@ -125,5 +124,6 @@ if result.threat_detected:
 This allows blocking or flagging adversarial inputs before they reach sensitive parts of your AI system.
 
 ## Further Reading
+- Detailed [User Guide](docs/User_Guide.md)
 - Algorithm and engine design [blog post](https://deconvoluteai.com/blog/yara-rules-llm-prompt-security?utm_source=github&utm_campaign=yara-gen&utm_medium=readme-further-reading)
 - Deconvolute SDK [source code](https://github.com/deconvolute-labs/deconvolute)

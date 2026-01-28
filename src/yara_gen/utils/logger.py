@@ -19,7 +19,7 @@ def setup_logger(
     individual handlers to filter based on the provided `level`.
 
     Args:
-        level (str): The logging level for the console handler (e.g., "INFO", "DEBUG").
+        level (str): The logging level for the console handler (e.g. "INFO", "DEBUG").
             Defaults to "INFO".
         log_file (str | None): Optional path to a file where logs should be saved.
             File logs are always written at DEBUG level.
