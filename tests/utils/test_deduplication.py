@@ -1,4 +1,4 @@
-from yara_gen.utils.deduplication import parse_existing_rules
+from yara_gen.generation.deduplication import parse_existing_rules
 
 
 def test_parse_non_existent_file(tmp_path):

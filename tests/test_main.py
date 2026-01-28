@@ -11,7 +11,7 @@ def test_generate_command_deduplication(tmp_path: Path, mocker: MagicMock) -> No
     Integration test for the 'generate' command with deduplication.
 
     Scenario:
-        - Input: Mocked extractor returns 2 rules:
+        - Input: Mocked engine returns 2 rules:
             1. 'rule_dup' containing string "known_malware"
             2. 'rule_new' containing string "zero_day_exploit"
         - Existing Rules: A .yar file containing "known_malware"
@@ -25,7 +25,7 @@ def test_generate_command_deduplication(tmp_path: Path, mocker: MagicMock) -> No
     input_dir = tmp_path / "data"
     input_dir.mkdir()
 
-    # Create dummy input files (content doesn't matter as we mock the extractor)
+    # Create dummy input files (content doesn't matter as we mock the engine)
     adv_file = input_dir / "adversarial.jsonl"
     adv_file.write_text(
         '{"text": "xyz", "source": "test", "dataset_type": "adversarial"}',
@@ -55,14 +55,14 @@ def test_generate_command_deduplication(tmp_path: Path, mocker: MagicMock) -> No
     output_file = tmp_path / "output.yar"
 
     # Mock Internal Components
-    # We mock 'get_extractor' so we don't need to rely on the actual N-Gram engine
+    # We mock 'get_engine' so we don't need to rely on the actual N-Gram engine
     # finding patterns in our dummy data. We just want to test the filtering logic
     # in main.
-    mock_get_extractor = mocker.patch("yara_gen.cli.commands.generate.get_extractor")
-    mock_extractor_instance = MagicMock()
-    mock_get_extractor.return_value = mock_extractor_instance
+    mock_get_engine = mocker.patch("yara_gen.cli.commands.generate.get_engine")
+    mock_engine_instance = MagicMock()
+    mock_get_engine.return_value = mock_engine_instance
 
-    # Define the Rules that the extractor "finds"
+    # Define the Rules that the engine "finds"
     rule_duplicate = GeneratedRule(
         name="auto_duplicate",
         score=0.9,
@@ -77,14 +77,14 @@ def test_generate_command_deduplication(tmp_path: Path, mocker: MagicMock) -> No
         metadata={"description": "Should be kept"},
     )
 
-    mock_extractor_instance.extract.return_value = [rule_duplicate, rule_new]
+    mock_engine_instance.extract.return_value = [rule_duplicate, rule_new]
 
     # Mock CLI Arguments
     test_args = [
         "yara-gen",
         "generate",
         str(adv_file),
-        "--benign",
+        "--benign-dataset",
         str(benign_file),
         "--output",
         str(output_file),
@@ -92,13 +92,11 @@ def test_generate_command_deduplication(tmp_path: Path, mocker: MagicMock) -> No
         str(existing_rules_file),
         "--engine",
         "ngram",
-        "--mode",
-        "strict",
     ]
 
     mocker.patch.object(sys, "argv", test_args)
 
-    # Should read args, call our mock extractor, filter, and write.
+    # Should read args, call our mock engine, filter, and write.
     main()
 
     assert output_file.exists(), "Output file was not created"

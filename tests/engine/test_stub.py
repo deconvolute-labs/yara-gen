@@ -1,17 +1,17 @@
 import pytest
 
-from yara_gen.engine.stub import StubExtractor
-from yara_gen.models.config import BaseExtractorConfig
+from yara_gen.engine.stub import StubEngine
+from yara_gen.models.engine_config import BaseEngineConfig
 from yara_gen.models.text import DatasetType, TextSample
 
 
-class TestStubExtractor:
+class TestStubEngine:
     @pytest.fixture
-    def extractor(self):
-        config = BaseExtractorConfig()
-        return StubExtractor(config)
+    def engine(self):
+        config = BaseEngineConfig(type="stub")
+        return StubEngine(config)
 
-    def test_stub_returns_placeholder_rule(self, extractor):
+    def test_stub_returns_placeholder_rule(self, engine):
         """The stub should always return one specific test rule."""
         # Create dummy input data
         adversarial = [
@@ -21,14 +21,14 @@ class TestStubExtractor:
         ]
         benign: list[TextSample] = []
 
-        rules = extractor.extract(adversarial, benign)
+        rules = engine.extract(adversarial, benign)
 
         assert len(rules) == 1
         assert rules[0].name == "stub_rule_001"
         assert rules[0].score == 1.0
         assert "stub" in rules[0].tags
 
-    def test_stub_consumes_input(self, extractor, caplog):
+    def test_stub_consumes_input(self, engine, caplog):
         """Verify the stub actually iterates over the input generator."""
         # Generator that yields 3 items
         adversarial = (
@@ -39,7 +39,7 @@ class TestStubExtractor:
         )
 
         with caplog.at_level("INFO"):
-            extractor.extract(adversarial, [])
+            engine.extract(adversarial, [])
 
         # Check logs to prove it counted 3 items
         assert "Consumed 3 adversarial samples" in caplog.text

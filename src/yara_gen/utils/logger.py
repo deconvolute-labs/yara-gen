@@ -1,9 +1,9 @@
-import argparse
+import json
 import logging
 import sys
 from typing import Any
 
-from yara_gen.constants import LOGGER_NAME
+from yara_gen.constants import LOGGER_NAME, META_AUTHOR
 
 LOG_FORMAT = "[%(levelname)s] %(asctime)s %(message)s"
 DATE_FORMAT = "%H:%M:%S"
@@ -13,7 +13,19 @@ def setup_logger(
     name: str = LOGGER_NAME, level: str = "INFO", log_file: str | None = None
 ) -> logging.Logger:
     """
-    Configures and returns a centralized logger.
+    Configures the application-wide logger with console and optional file handlers.
+
+    Sets the global logging level to DEBUG to capture all events, while allowing
+    individual handlers to filter based on the provided `level`.
+
+    Args:
+        level (str): The logging level for the console handler (e.g. "INFO", "DEBUG").
+            Defaults to "INFO".
+        log_file (str | None): Optional path to a file where logs should be saved.
+            File logs are always written at DEBUG level.
+
+    Returns:
+        logging.Logger: The configured logger instance.
     """
     logger = logging.getLogger(name)
 
@@ -22,22 +34,22 @@ def setup_logger(
     if logger.handlers:
         return logger
 
-    # Set Level
+    # Set level
     numeric_level = getattr(logging, level.upper(), logging.INFO)
     logger.setLevel(numeric_level)
 
-    # Create Console Handler (Standard Output)
+    # Create console handler (standard output)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(numeric_level)
 
-    # Create Formatter
+    # Create formatter
     formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
     console_handler.setFormatter(formatter)
 
-    # Add Console Handler
+    # Add console handler
     logger.addHandler(console_handler)
 
-    # Create File Handler if requested
+    # Create file handler if requested
     if log_file:
         from pathlib import Path
 
@@ -54,53 +66,59 @@ def setup_logger(
 
 def get_logger(name: str = LOGGER_NAME) -> logging.Logger:
     """
-    Helper to get the logger in other modules without re-configuring.
+    Retrieves the existing application-wide logger instance.
+
+    Returns:
+        logging.Logger: The logger instance associated with the constant LOGGER_NAME.
     """
     return logging.getLogger(name)
 
 
-def log_run_config(
-    logger: logging.Logger,
-    args: argparse.Namespace,
-    extra_info: dict[str, Any] | None = None,
-) -> None:
+def log_header(logger: logging.Logger, title: str = "YARA Gen") -> None:
     """
-    Logs the program banner and configuration parameters in a formatted box.
+    Logs a stylized ASCII header box to visually delineate run sections.
+
+    Args:
+        logger (logging.Logger): The logger instance to use.
+        title (str): The title text to display centered within the header box.
+            Defaults to "YARA Gen".
     """
     width = 60
-    border = "+" + "-" * (width - 2) + "+"
+    border = "+" + "=" * (width - 2) + "+"
 
-    def log_line(content: str, center: bool = False) -> None:
-        if center:
-            logger.info(f"| {content.center(width - 4)} |")
-        else:
-            logger.info(f"| {content.ljust(width - 4)} |")
+    # Center the title
+    padded_title = f"{title}".center(width - 4)
+    padded_author = f"by {META_AUTHOR}".center(width - 4)
 
     logger.info(border)
-    log_line("YARA Gen", center=True)
-    logger.info("|" + "-" * (width - 2) + "|")  # Separator
-
-    config_items = vars(args).copy()
-    if extra_info:
-        config_items.update(extra_info)
-
-    filtered_items = {
-        k: v for k, v in config_items.items() if k not in ["command", "func"]
-    }
-
-    if filtered_items:
-        log_line("Configuration", center=True)
-        logger.info("|" + "-" * (width - 2) + "|")  # Separator
-
-        for key, value in sorted(filtered_items.items()):
-            # Format Key
-            key_str = key.replace("_", " ").title()
-
-            # Format Value
-            val_str = str(value)
-            if len(val_str) > 33:  # Wrap/Truncate if too long (simple approach)
-                val_str = val_str[:30] + "..."
-
-            logger.info(f"| {key_str:<20}: {val_str:<33} |")
-
+    logger.info(f"| {padded_title} |")
+    logger.info(f"| {padded_author} |")
     logger.info(border)
+
+
+def log_named_value(logger: logging.Logger, key: str, value: Any) -> None:
+    """
+    Logs a key-value pair in a consistent, aligned format.
+
+    Useful for printing startup parameters or summary statistics
+    (e.g. "Input : data.txt").
+
+    Args:
+        logger (logging.Logger): The logger instance to use.
+        key (str): The label for the value (will be padded for alignment).
+        value (Any): The value to display.
+    """
+    # Just a simple consistent alignment
+    logger.info(f"{key:<12}: {value}")
+
+
+def log_config(logger: logging.Logger, config: dict[str, Any]) -> None:
+    """
+    Logs a configuration dictionary as a formatted, pretty-printed JSON string.
+
+    Args:
+        logger (logging.Logger): The logger instance to use.
+        config (dict[str, Any]): The dictionary containing configuration data to log.
+    """
+    logger.info("Configuration:")
+    logger.info(json.dumps(config, indent=2, default=str))

@@ -70,12 +70,9 @@ class JSONLAdapter(BaseAdapter):
                     )
 
                     if not text_content or not isinstance(text_content, str):
-                        # If strictly required, we could log a warning here
                         continue
 
                     # Extract Metadata (everything else)
-                    # We create a copy to avoid mutating the original dict if needed,
-                    # though here we just filter out the text key we used.
                     metadata = data.copy()
 
                     # Construct Sample

@@ -1,0 +1,31 @@
+# Global Output Settings
+output_path: "data/tests/autopath-rules.yar"
+
+tags:
+  - "generated"
+  - "category:injection"
+  
+adversarial_adapter:
+  type: "jsonl"
+  
+  # Examples for HuggingFace:
+  # type: "huggingface"
+  # config_name: "subset_name" 
+  # split: "train"
+  # use_auth_token: true
+
+benign_adapter:
+  type: "jsonl"
+  
+engine:
+  type: "ngram"
+
+  # rule_date: "2026-01-27"
+  score_threshold: 0.1
+  max_rules_per_run: 50
+
+  # N-Gram Specific Parameters
+  min_ngram: 3
+  max_ngram: 10
+  min_document_frequency: 0.01
+  benign_penalty_weight: 1.0

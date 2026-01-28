@@ -1,27 +1,27 @@
 import pytest
 from scipy import sparse
 
-from yara_gen.engine.ngram import NgramExtractor
-from yara_gen.models.config import NgramConfig
+from yara_gen.engine.ngram import NgramEngine
+from yara_gen.models.engine_config import NgramEngineConfig
 from yara_gen.models.text import DatasetType, TextSample
 
 
 @pytest.fixture
-def extractor():
-    """Returns an NgramExtractor instance with default config."""
-    config = NgramConfig(
+def engine():
+    """Returns an NgramEngine instance with default config."""
+    config = NgramEngineConfig(
         score_threshold=0.5,
-        min_ngram_length=2,  # Small for testing
-        max_ngram_length=5,
+        min_ngram=2,  # Small for testing
+        max_ngram=5,
         benign_penalty_weight=1.0,
     )
-    return NgramExtractor(config)
+    return NgramEngine(config)
 
 
 class TestSubsumptionLogic:
     """Tests for _filter_subsumed (Logic Stage 3)."""
 
-    def test_removes_redundant_short_phrase(self, extractor):
+    def test_removes_redundant_short_phrase(self, engine):
         """
         Scenario: Longer phrase has similar score.
         Action: Should keep the LONGER phrase (safety).
@@ -31,12 +31,12 @@ class TestSubsumptionLogic:
             {"text": "ignore previous instructions", "score": 0.95},
         ]
 
-        result = extractor._filter_subsumed(candidates)
+        result = engine._filter_subsumed(candidates)
 
         assert len(result) == 1
         assert result[0]["text"] == "ignore previous instructions"
 
-    def test_keeps_short_phrase_if_score_is_much_better(self, extractor):
+    def test_keeps_short_phrase_if_score_is_much_better(self, engine):
         """
         Scenario: Shorter phrase has vastly better score (1.0 vs 0.5).
         Action: Should keep the SHORTER phrase (robustness).
@@ -46,14 +46,14 @@ class TestSubsumptionLogic:
             {"text": "ignore previous instructions", "score": 0.5},
         ]
 
-        result = extractor._filter_subsumed(candidates)
+        result = engine._filter_subsumed(candidates)
 
         # Should keep both, or at least the short one.
         # Logic: Short is NOT subsumed because long's score is too low.
         texts = {c["text"] for c in result}
         assert "ignore previous" in texts
 
-    def test_keeps_distinct_phrases(self, extractor):
+    def test_keeps_distinct_phrases(self, engine):
         """
         Scenario: Phrases do not overlap textually.
         Action: Keep both.
@@ -63,7 +63,7 @@ class TestSubsumptionLogic:
             {"text": "delete database", "score": 0.9},
         ]
 
-        result = extractor._filter_subsumed(candidates)
+        result = engine._filter_subsumed(candidates)
 
         assert len(result) == 2
 
@@ -71,7 +71,7 @@ class TestSubsumptionLogic:
 class TestSetCoverLogic:
     """Tests for _greedy_set_cover (Logic Stage 4)."""
 
-    def test_selects_best_coverage_rule(self, extractor):
+    def test_selects_best_coverage_rule(self, engine):
         """
         Scenario: 3 candidates.
             - Rule A covers samples [0, 1]
@@ -92,18 +92,16 @@ class TestSetCoverLogic:
             {"text": "Rule C", "score": 0.9, "original_index": 2},
         ]
 
-        selected = extractor._greedy_set_cover(candidates, X_adv, total_samples=3)
+        selected = engine._greedy_set_cover(candidates, X_adv, total_samples=3)
 
         # It should pick Rule C because it covers 3 samples (A covers 2, B covers 1)
         assert len(selected) >= 1
         assert selected[0]["text"] == "Rule C"
 
-        # Since C covers everything, we expect it to stop there (or pick others if they
-        # add nothing? The logic breaks if coverage is 0. C covers everything,
-        # so A and B add 0 new coverage.
+        # Since C covers everything, we expect it to stop there
         assert len(selected) == 1
 
-    def test_iterative_selection(self, extractor):
+    def test_iterative_selection(self, engine):
         """
         Scenario: No single rule covers everything.
             - Rule A covers [0, 1]
@@ -124,7 +122,7 @@ class TestSetCoverLogic:
             {"text": "Rule B", "score": 0.9, "original_index": 1},
         ]
 
-        selected = extractor._greedy_set_cover(candidates, X_adv, total_samples=4)
+        selected = engine._greedy_set_cover(candidates, X_adv, total_samples=4)
 
         assert len(selected) == 2
         texts = {s["text"] for s in selected}
@@ -135,7 +133,7 @@ class TestSetCoverLogic:
 class TestFullIntegration:
     """Integration test for the full extract method."""
 
-    def test_extract_identifies_attack_pattern(self, extractor):
+    def test_extract_identifies_attack_pattern(self, engine):
         """
         Pass real strings and verify the full pipeline finds the common ngram.
         """
@@ -171,7 +169,7 @@ class TestFullIntegration:
         # The phrase "this is an" appears in 66% of attacks and 100% of
         # benign -> Score < 0.
 
-        rules = extractor.extract(adversarial, benign)
+        rules = engine.extract(adversarial, benign)
 
         assert len(rules) > 0
 
@@ -182,6 +180,6 @@ class TestFullIntegration:
         # Check that we eliminated the benign overlap
         assert "this is an" not in rule_strings
 
-    def test_empty_input_returns_empty(self, extractor):
-        rules = extractor.extract([], [])
+    def test_empty_input_returns_empty(self, engine):
+        rules = engine.extract([], [])
         assert rules == []

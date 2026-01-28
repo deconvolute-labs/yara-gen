@@ -1,26 +1,26 @@
 from collections.abc import Iterable
 
-from yara_gen.engine.base import BaseExtractor
-from yara_gen.models.config import BaseExtractorConfig
+from yara_gen.engine.base import BaseEngine
+from yara_gen.models.engine_config import BaseEngineConfig
 from yara_gen.models.text import GeneratedRule, RuleString, TextSample
 from yara_gen.utils.logger import get_logger
 
 logger = get_logger()
 
 
-class StubExtractor(BaseExtractor[BaseExtractorConfig]):
+class StubEngine(BaseEngine[BaseEngineConfig]):
     """
-    A dummy extractor for testing the pipeline wiring without running real math.
+    A dummy engine for testing the pipeline wiring without running real math.
     """
 
     def extract(
         self, adversarial: Iterable[TextSample], benign: Iterable[TextSample]
     ) -> list[GeneratedRule]:
-        logger.info("StubExtractor: Started extraction (STUB MODE).")
+        logger.info("StubEngine: Started extraction (STUB MODE).")
 
         # Consume inputs to prove we can read them
         count = sum(1 for _ in adversarial)
-        logger.info(f"StubExtractor: Consumed {count} adversarial samples.")
+        logger.info(f"StubEngine: Consumed {count} adversarial samples.")
 
         return [
             GeneratedRule(

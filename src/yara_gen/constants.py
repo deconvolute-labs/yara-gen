@@ -3,6 +3,7 @@ from enum import Enum
 META_AUTHOR = "Deconvolute Labs"
 META_DESC = "Auto-generated rule for Deconvolute SDK security suite."
 LOGGER_NAME = "yara-gen"
+DEFAULT_RULE_FILENAME = "generated_rules.yar"
 
 
 class EngineType(str, Enum):

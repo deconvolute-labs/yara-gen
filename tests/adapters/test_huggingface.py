@@ -1,6 +1,7 @@
 import pytest
 
 from yara_gen.adapters.huggingface import HuggingFaceAdapter
+from yara_gen.errors import DataError
 from yara_gen.models.text import DatasetType
 
 
@@ -63,7 +64,7 @@ class TestHuggingFaceAdapter:
         mock_load_dataset = mocker.patch("yara_gen.adapters.huggingface.load_dataset")
         mock_load_dataset.side_effect = Exception("Connection refused")
 
-        with pytest.raises(ValueError, match="Could not load Hugging Face dataset"):
+        with pytest.raises(DataError, match="Could not load Hugging Face dataset"):
             list(adapter.load("bad/repo"))
 
     def test_load_with_config_name(self, adapter, mocker):

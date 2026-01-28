@@ -1,26 +1,32 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from yara_gen.constants import EngineConstants
+from yara_gen.models.adapter_config import AdapterConfig
+from yara_gen.models.engine_config import (
+    EngineConfig,
+    NgramEngineConfig,
+)
 
 
-class BaseExtractorConfig(BaseModel):
+class PrepareConfig(BaseModel):
     """
-    Base configuration shared by all extraction engines.
-    """
-
-    score_threshold: float = EngineConstants.THRESHOLD_STRICT.value
-    rule_date: str | None = None
-
-
-class NgramConfig(BaseExtractorConfig):
-    """
-    Configuration specific to the Differential N-Gram Engine.
+    Configuration for the prepare command.
+    Wraps the adapter config to ensure overrides are properly namespaced.
     """
 
-    min_ngram_length: int = EngineConstants.DEFAULT_MIN_NGRAM.value
-    max_ngram_length: int = EngineConstants.DEFAULT_MAX_NGRAM.value
+    adapter: AdapterConfig
 
-    # The penalty lambda for benign matches
-    benign_penalty_weight: float = EngineConstants.DEFAULT_BENIGN_PENALTY.value
 
-    min_document_frequency: float = EngineConstants.MIN_DOCUMENT_FREQ.value
+class AppConfig(BaseModel):
+    """
+    Top-level application configuration.
+    """
+
+    # Global settings
+    output_path: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+    # Domain specific configs
+    adversarial_adapter: AdapterConfig = Field(default_factory=AdapterConfig)
+    benign_adapter: AdapterConfig = Field(default_factory=AdapterConfig)
+
+    engine: EngineConfig = Field(default_factory=NgramEngineConfig)

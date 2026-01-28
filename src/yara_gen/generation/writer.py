@@ -42,7 +42,6 @@ class YaraWriter:
         logger.debug(f"Rendering {len(rules)} rules via Jinja2 template...")
 
         # We need to ensure strings are safe for YARA (escape quotes/backslashes)
-        # We do this transformation right before rendering
         sanitized_rules = self._sanitize_for_rendering(rules)
 
         rendered_content = self.template.render(
@@ -67,8 +66,6 @@ class YaraWriter:
         This prevents broken YARA syntax if a prompt contains quotes like:
         "ignore "previous" instructions" -> "ignore \"previous\" instructions"
         """
-        # Note: In a real app, we might want to return copies to avoid mutating
-        # originals. For CLI, modifying in place or shallow copy is acceptable.
         for rule in rules:
             for s in rule.strings:
                 # Escape backslashes first, then quotes

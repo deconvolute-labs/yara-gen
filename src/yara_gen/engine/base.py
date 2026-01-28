@@ -1,15 +1,13 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
-from yara_gen.models.config import BaseExtractorConfig
+from yara_gen.models.engine_config import BaseEngineConfig
 from yara_gen.models.text import GeneratedRule, TextSample
 
-# Generic type variable ensuring config is at least a BaseExtractorConfig
 
-
-class BaseExtractor[TConfig: BaseExtractorConfig](ABC):
+class BaseEngine[TConfig: BaseEngineConfig](ABC):
     """
-    Abstract Base Class for all extraction strategies.
+    Abstract Base Class for all engine strategies.
 
     The Strategy Pattern allows us to swap algorithms
     without changing the CLI or Orchestrator code.
