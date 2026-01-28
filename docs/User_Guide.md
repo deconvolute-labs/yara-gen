@@ -177,6 +177,59 @@ ygen generate ... --set engine.min_ngram=3 --set engine.score_threshold=0.1 ...
 You can then copy that line to generate your final production rules using the full dataset (Train + Dev).
 
 
+### Visualizing Results
+
+Raw JSON data can be difficult to interpret. Yara-Gen includes a standalone visualization script to generate charts from your optimization results.
+
+First, ensure you have the visualization dependencies installed:
+
+```bash
+uv sync --group plots
+```
+
+Then run the visualizer on your results file:
+
+```bash
+uv run --group plots python scripts/plot_optimization_results.py \
+  optimization_results_20260128.json \
+  --metric f1_score
+```
+
+This generates a folder in `data/plots/` containing three key visualizations.
+
+#### 1. The Pareto Frontier (Precision vs. Recall)
+
+This is your primary tool for decision-making. It visualizes the trade-offs available to your engine.
+
+- X-Axis (Recall): How many attacks were caught.
+- Y-Axis (Precision): How "pure" the alerts are (lack of false positives).
+
+**What to look for:**
+
+- The "Sweet Spot": Look for points in the top-right corner. These configurations have high detection rates with few false alarms.
+
+- The "Cliff": You may see a point where Recall increases slightly, but Precision drops massively. This gap indicates where the engine becomes "too loose" and starts flagging benign noise.
+
+#### 2. Parameter Correlation Matrix
+
+This heatmap helps you understand which parameters actually matter.
+
+- Red (+1.0): Strong positive correlation. Increasing this parameter increases the metric.
+- Blue (-1.0): Strong negative correlation. Increasing this parameter decreases the metric.
+- Gray (0.0): No correlation. Changing this parameter has no effect on performance. Use this to identify which "knobs" are worth tuning and which can be ignored.
+
+#### 3. Best Run Summary & Confusion Matrix
+The script identifies the single best configuration based on your chosen metric (default: `f1_score`) and generates a specific Confusion Matrix for it.
+
+**How to read the matrix:**
+- Top-Right (False Positives): Safe inputs that were incorrectly flagged. High numbers here mean user frustration.
+- Bottom-Left (False Negatives): Attacks that slipped through. High numbers here mean security risks.
+- Diagonal (TN/TP): Correct predictions. You want these numbers to be as high as possible.
+
+The folder also contains `summary.txt`, which lists the exact parameter values (e.g. `score_threshold=0.15`) used to achieve this result.
+
+
+
 ## Configuration and Overrides
 
 Rule generation behavior is controlled through a combination of defaults, a configuration file, and CLI overrides. This model is designed to support both reproducible builds and rapid experimentation.
