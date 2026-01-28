@@ -44,8 +44,10 @@ class TestTextSample:
 class TestGeneratedRule:
     def test_defaults(self):
         """Test default values for GeneratedRule."""
-        rule_string = RuleString(value="bad_string", score=0.9)
-        rule = GeneratedRule(name="TestRule", score=0.95, strings=[rule_string])
+        rule_string = RuleString(value="bad_string", score=0.9, identifier="$s1")
+        rule = GeneratedRule(
+            name="TestRule", score=0.95, strings=[rule_string], condition="$s1"
+        )
 
         assert rule.tags == []
         assert rule.metadata == {}
@@ -54,12 +56,15 @@ class TestGeneratedRule:
 
     def test_full_initialization(self):
         """Test initialization with all fields."""
-        rule_string = RuleString(value="bad", score=1.0, modifiers=["ascii"])
+        rule_string = RuleString(
+            value="bad", score=1.0, modifiers=["ascii"], identifier="$s1"
+        )
         rule = GeneratedRule(
             name="ComplexRule",
             tags=["trojan", "stealer"],
             score=0.8,
             strings=[rule_string],
+            condition="$s1",
             metadata={"author": "me"},
         )
 

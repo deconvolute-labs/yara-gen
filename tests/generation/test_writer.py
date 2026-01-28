@@ -16,8 +16,14 @@ class TestYaraWriter:
             tags=["test"],
             score=1.0,
             metadata={"source": "unit_test"},
+            condition="$s1",
             strings=[
-                RuleString(value="suspicious string", score=1.0, modifiers=["nocase"])
+                RuleString(
+                    value="suspicious string",
+                    score=1.0,
+                    modifiers=["nocase"],
+                    identifier="$s1",
+                )
             ],
         )
 
@@ -44,7 +50,12 @@ class TestYaraWriter:
             tags=[],
             score=1.0,
             metadata={},
-            strings=[RuleString(value='say "hello" now', score=1.0, modifiers=[])],
+            condition="$s1",
+            strings=[
+                RuleString(
+                    value='say "hello" now', score=1.0, modifiers=[], identifier="$s1"
+                )
+            ],
         )
         output_file = tmp_path / "escaped.yar"
 
@@ -66,7 +77,15 @@ class TestYaraWriter:
             tags=[],
             score=1.0,
             metadata={},
-            strings=[RuleString(value=r"C:\Windows\System32", score=1.0, modifiers=[])],
+            condition="$s1",
+            strings=[
+                RuleString(
+                    value=r"C:\Windows\System32",
+                    score=1.0,
+                    modifiers=[],
+                    identifier="$s1",
+                )
+            ],
         )
         output_file = tmp_path / "backslash.yar"
 
@@ -84,7 +103,10 @@ class TestYaraWriter:
             tags=[],
             score=1.0,
             metadata={"description": 'He said "ignore"'},
-            strings=[RuleString(value="test", score=1.0, modifiers=[])],
+            condition="$s1",
+            strings=[
+                RuleString(value="test", score=1.0, modifiers=[], identifier="$s1")
+            ],
         )
         output_file = tmp_path / "meta.yar"
 
@@ -110,7 +132,8 @@ class TestYaraWriter:
             tags=[],
             score=1.0,
             metadata={},
-            strings=[RuleString(value="a", score=1.0, modifiers=[])],
+            condition="$s1",
+            strings=[RuleString(value="a", score=1.0, modifiers=[], identifier="$s1")],
         )
 
         output_file = tmp_path / "simple.yar"

@@ -31,6 +31,7 @@ dependencies = [
   "pyyaml>=6.0.3",
   "scikit-learn>=1.8.0",
   "types-pyyaml>=6.0.12.20250915",
+  "yara-python>=4.5.4",
 ]
 [project.urls]
 Homepage = "https://deconvoluteai.com"

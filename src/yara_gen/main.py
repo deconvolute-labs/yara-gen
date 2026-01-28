@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 from yara_gen.cli.args import parse_args
-from yara_gen.cli.commands import generate, prepare
+from yara_gen.cli.commands import generate, optimize, prepare
 from yara_gen.utils.config import load_config
 from yara_gen.utils.logger import log_header, setup_logger
 
@@ -45,6 +45,9 @@ def main() -> None:
                 # error properly
                 input_name = "batch_run"
 
+    elif args.command == "optimize":
+        input_name = "optimization_run"
+
     # Sanitize name (remove extension if present, though unlikely for config keys)
     safe_name = input_name.split(".")[0]
     log_filename = f"logs_{args.command}_{safe_name}_{timestamp}.log"
@@ -58,6 +61,8 @@ def main() -> None:
         log_header(logger, title="YARA Gen - Data Preparation")
     elif args.command == "generate":
         log_header(logger, title="YARA Gen - Rule Generation")
+    elif args.command == "optimize":
+        log_header(logger, title="YARA Gen - Hyperparameter Optimization")
     logger.debug(f"Logger initialized in {log_level} mode")
     logger.info(f"Logging to file: {log_path}")
 
@@ -66,6 +71,8 @@ def main() -> None:
         prepare.run(args)
     elif args.command == "generate":
         generate.run(args)
+    elif args.command == "optimize":
+        optimize.run(args)
 
 
 if __name__ == "__main__":

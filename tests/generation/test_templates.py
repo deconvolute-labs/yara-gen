@@ -17,7 +17,8 @@ class TestYaraTemplate:
         rule = GeneratedRule(
             name="TestRule",
             score=1.0,
-            strings=[RuleString(value="evil_string", score=1.0)],
+            strings=[RuleString(value="evil_string", score=1.0, identifier="$s1")],
+            condition="$s1",
         )
 
         output = template.render(timestamp="2025-01-01", rules=[rule])
@@ -31,7 +32,8 @@ class TestYaraTemplate:
         rule = GeneratedRule(
             name="MetaRule",
             score=1.0,
-            strings=[RuleString(value="foo", score=1.0)],
+            strings=[RuleString(value="foo", score=1.0, identifier="$s1")],
+            condition="$s1",
             metadata={"author": "Unit Test", "severity": "High"},
         )
 
@@ -47,7 +49,8 @@ class TestYaraTemplate:
             name="TaggedRule",
             tags=["APT", "Trojan"],
             score=1.0,
-            strings=[RuleString(value="foo", score=1.0)],
+            strings=[RuleString(value="foo", score=1.0, identifier="$s1")],
+            condition="$s1",
         )
 
         output = template.render(timestamp="2025-01-01", rules=[rule])
@@ -58,10 +61,16 @@ class TestYaraTemplate:
     def test_multiple_rules(self, template):
         """Test rendering multiple rules in one file."""
         r1 = GeneratedRule(
-            name="Rule1", score=1.0, strings=[RuleString(value="a", score=1)]
+            name="Rule1",
+            score=1.0,
+            strings=[RuleString(value="a", score=1, identifier="$s1")],
+            condition="$s1",
         )
         r2 = GeneratedRule(
-            name="Rule2", score=1.0, strings=[RuleString(value="b", score=1)]
+            name="Rule2",
+            score=1.0,
+            strings=[RuleString(value="b", score=1, identifier="$s1")],
+            condition="$s1",
         )
 
         output = template.render(timestamp="2025-01-01", rules=[r1, r2])
