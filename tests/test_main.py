@@ -66,14 +66,20 @@ def test_generate_command_deduplication(tmp_path: Path, mocker: MagicMock) -> No
     rule_duplicate = GeneratedRule(
         name="auto_duplicate",
         score=0.9,
-        strings=[RuleString(value="known_malware", score=1.0)],  # Matches existing!
+        condition="$s1",
+        strings=[
+            RuleString(value="known_malware", score=1.0, identifier="$s1")
+        ],  # Matches existing!
         metadata={"description": "Should be dropped"},
     )
 
     rule_new = GeneratedRule(
         name="auto_new_rule",
         score=0.9,
-        strings=[RuleString(value="zero_day_exploit", score=1.0)],  # Unique
+        condition="$s1",
+        strings=[
+            RuleString(value="zero_day_exploit", score=1.0, identifier="$s1")
+        ],  # Unique
         metadata={"description": "Should be kept"},
     )
 

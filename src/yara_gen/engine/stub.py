@@ -27,9 +27,13 @@ class StubEngine(BaseEngine[BaseEngineConfig]):
                 name="stub_rule_001",
                 tags=["stub", "test"],
                 score=1.0,
+                condition="any of them",
                 strings=[
                     RuleString(
-                        value="test_string_stub", score=1.0, modifiers=["nocase"]
+                        value="test_string_stub",
+                        score=1.0,
+                        modifiers=["nocase"],
+                        identifier="$s1",
                     )
                 ],
                 metadata={"type": "stub"},

@@ -1,0 +1,22 @@
+search_space:
+  type: "ngram"
+  
+  min_ngram: [3, 4]
+  score_threshold: [0.05, 0.1]
+  
+  max_ngram: [10]
+  benign_penalty_weight: [1.0]
+  
+  # Crucial for small datasets! 
+  # 0.01 = 1% (7 docs). 0.005 = 0.5% (3.5 docs).
+  min_document_frequency: [0.005]
+
+selection:
+  target_metric: "f1_score" # A balanced metric for testing
+  
+  # Loose constraints so we don't reject everything during the test
+  min_precision: 0.1 
+  max_false_positives: 100
+
+dev_split_ratio: 0.2
+seed: 42

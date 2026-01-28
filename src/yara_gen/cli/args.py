@@ -1,7 +1,6 @@
 import argparse
-from pathlib import Path
 
-from yara_gen.cli.commands import generate, prepare
+from yara_gen.cli.commands import generate, optimize, prepare
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,14 +25,6 @@ def parse_args() -> argparse.Namespace:
     )
 
     shared_parser.add_argument(
-        "--config",
-        "-c",
-        type=Path,
-        default=argparse.SUPPRESS,
-        help="Path to the configuration YAML file (default: generation_config.yaml)",
-    )
-
-    shared_parser.add_argument(
         "--set",
         "-s",
         action="append",
@@ -55,5 +46,6 @@ def parse_args() -> argparse.Namespace:
 
     prepare.register_args(subparsers, parents=[shared_parser])
     generate.register_args(subparsers, parents=[shared_parser])
+    optimize.register_args(subparsers, parents=[shared_parser])
 
     return parser.parse_args()

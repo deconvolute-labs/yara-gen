@@ -83,17 +83,17 @@ def log_header(logger: logging.Logger, title: str = "YARA Gen") -> None:
         title (str): The title text to display centered within the header box.
             Defaults to "YARA Gen".
     """
-    width = 60
+    width = 80
     border = "+" + "=" * (width - 2) + "+"
 
     # Center the title
     padded_title = f"{title}".center(width - 4)
     padded_author = f"by {META_AUTHOR}".center(width - 4)
 
-    logger.info(border)
-    logger.info(f"| {padded_title} |")
-    logger.info(f"| {padded_author} |")
-    logger.info(border)
+    print(border)
+    print(f"| {padded_title} |")
+    print(f"| {padded_author} |")
+    print(border)
 
 
 def log_named_value(logger: logging.Logger, key: str, value: Any) -> None:

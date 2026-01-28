@@ -131,9 +131,9 @@ def test_generate_cli_args_override_config(tmp_path: Path, mocker: MagicMock) ->
 
     test_args = [
         "yara-gen",
+        "generate",
         "--config",
         str(config_file),
-        "generate",
         str(adv_file),
         "--benign-dataset",
         str(benign_file),
@@ -201,9 +201,9 @@ def test_generate_adapter_overrides(tmp_path: Path, mocker: MagicMock) -> None:
     # Simulate CLI Execution with Adapter Overrides
     test_args = [
         "yara-gen",
+        "generate",
         "--config",
         str(config_file),
-        "generate",
         str(adv_file),
         "--benign-dataset",
         str(benign_file),

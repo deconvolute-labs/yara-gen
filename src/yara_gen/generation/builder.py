@@ -47,9 +47,11 @@ class RuleBuilder:
             name=rule_name,
             tags=["generated", "prompt_injection"],
             score=score_val,
+            condition="any of them",
             strings=[
                 RuleString(
                     value=text,
+                    identifier="$s1",
                     score=score_val,
                     modifiers=["nocase", "wide", "ascii"],
                 )

@@ -52,6 +52,7 @@ class RuleString(BaseModel):
     """
 
     value: str
+    identifier: str
     score: float
     modifiers: list[str] = Field(default_factory=lambda: ["nocase", "wide", "ascii"])
 
@@ -66,5 +67,6 @@ class GeneratedRule(BaseModel):
     # The overall rule score (usually the avg or max of its strings)
     score: float
     strings: list[RuleString]
+    condition: str
     metadata: dict[str, str] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)

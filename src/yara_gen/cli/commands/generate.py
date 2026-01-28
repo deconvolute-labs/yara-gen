@@ -40,6 +40,14 @@ def register_args(
         "input", type=Path, nargs="?", help="Path to the adversarial dataset"
     )
 
+    parser.add_argument(
+        "--config",
+        "-c",
+        type=Path,
+        default="generation_config.yaml",
+        help="Path to the configuration YAML file (default: generation_config.yaml)",
+    )
+
     # Note: Defaults are set to None to allow generation_config.yaml to take precedence
     # unless the user explicitly provides the flag.
     parser.add_argument(
@@ -93,7 +101,7 @@ def register_args(
         "--rule-date",
         type=str,
         help=(
-            "Fixed date string (e.g. 2023-01-01) for rule metadata to ensure "
+            "Fixed date string (e.g. 2026-01-27) for rule metadata to ensure "
             "deterministic builds."
         ),
     )
