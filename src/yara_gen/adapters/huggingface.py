@@ -80,17 +80,24 @@ class HuggingFaceAdapter(BaseAdapter):
         count = 0
         try:
             for row in ds:
+                # Try to get text from the user-specified column
                 text_content = row.get(target_column)
+                used_key = target_column
 
                 # Heuristic: If default 'text' fails, try 'prompt' as a fallback
                 if not text_content and target_column == "text":
-                    text_content = row.get("prompt") or row.get("Prompt")
+                    if row.get("prompt"):
+                        text_content = row.get("prompt")
+                        used_key = "prompt"
+                    elif row.get("Prompt"):
+                        text_content = row.get("Prompt")
+                        used_key = "Prompt"
 
                 if not text_content:
                     continue
 
                 # Metadata is everything except the text column
-                metadata = {k: v for k, v in row.items() if k != target_column}
+                metadata = {k: v for k, v in row.items() if k != used_key}
 
                 yield TextSample(
                     text=str(text_content),

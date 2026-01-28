@@ -29,6 +29,8 @@ class TestHuggingFaceAdapter:
         assert samples[0].text == "attack one"
         assert samples[0].metadata["label"] == "unsafe"
 
+        assert "text" not in samples[0].metadata
+
         # Verify call args
         mock_load_dataset.assert_called_with(
             "deepset/test-dataset", name=None, split="train", streaming=True
@@ -44,6 +46,10 @@ class TestHuggingFaceAdapter:
 
         assert len(samples) == 1
         assert samples[0].text == "malicious payload"
+
+        # The custom source column 'content' must NOT be in metadata
+        assert "content" not in samples[0].metadata
+
         mock_load_dataset.assert_called_with(
             "user/repo", name=None, split="validation", streaming=True
         )
@@ -58,6 +64,25 @@ class TestHuggingFaceAdapter:
 
         assert len(samples) == 1
         assert samples[0].text == "ignore instructions"
+
+        # The fallback key 'prompt' must NOT be in metadata
+        assert "prompt" not in samples[0].metadata
+        assert samples[0].metadata["category"] == "jailbreak"
+
+    def test_fallback_to_capitalized_prompt_column(self, adapter, mocker):
+        """Test heuristic fallback to 'Prompt' (capitalized) and metadata exclusion."""
+        mock_data = [{"Prompt": "Do anything now", "other_field": "123"}]
+        mock_load_dataset = mocker.patch("yara_gen.adapters.huggingface.load_dataset")
+        mock_load_dataset.return_value = mock_data
+
+        samples = list(adapter.load("user/repo"))
+
+        assert len(samples) == 1
+        assert samples[0].text == "Do anything now"
+
+        # 'Prompt' key must NOT be in metadata
+        assert "Prompt" not in samples[0].metadata
+        assert samples[0].metadata["other_field"] == "123"
 
     def test_hf_load_failure(self, adapter, mocker):
         """Test that connection errors raise a ValueError."""
