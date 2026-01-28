@@ -4,7 +4,7 @@ search_space:
   min_ngram: [3, 4]
   score_threshold: [0.05, 0.1]
   
-  max_ngram: [8, 9, 10]
+  max_ngram: [10]
   benign_penalty_weight: [1.0]
   
   # Crucial for small datasets! 

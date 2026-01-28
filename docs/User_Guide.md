@@ -101,60 +101,89 @@ Generation defaults are read from `generation_config.yaml`. Any CLI flags or `--
 Rule generation is inherently iterative. You generate an initial rule set, inspect the output, adjust sensitivity or engine parameters, and regenerate. Prepared datasets make this loop fast and predictable.
 
 
-## TODO: Finding Hyperparameters with Optimize
+## Finding Hyperparameters with Optimize
 
+Tuning generation parameters manually—specifically thresholds and penalties—can be inefficient. The `optimize` command automates this by performing a grid search over a defined search space.
+
+It automatically splits your adversarial and benign data into "Train" (for rule generation) and "Dev" (for evaluation) sets. It then runs generation for every combination of parameters defined in your config, evaluates the resulting rules against the held-out Dev set, and reports the configuration that yields the best performance.
+
+### The Optimization Configuration
+
+Optimization is controlled by a YAML configuration file (default: `optimization_config.yaml`). This file defines three key areas: the search space, selection criteria, and data splitting.
+
+#### Search Space
+
+The `search_space` section defines the parameters to iterate over. For the default `ngram` engine, the key parameters are:
+
+- **min_ngram / max_ngram**: Controls the size of the extracted patterns. Shorter n-grams increase recall but are noisier; longer n-grams are specific but brittle.
+- **score_threshold**: The primary sensitivity knob. Lower values keep more candidate rules (higher coverage), while higher values filter out everything but the strongest signals.
+- **benign_penalty_weight**: Controls how aggressively the engine suppresses patterns that appear in benign text. Higher values force the engine to reject anything remotely looking like safe text.
+- **min_document_frequency**: The minimum percentage of adversarial samples a pattern must appear in. This filters out "one-off" anomalies to focus on systemic attack patterns.
 
 ```yaml
-# Configuration for the 'optimize' command
-# This maps to the OptimizationConfig Pydantic model.
-
-# 1. Search Space
-# Defines the grid of hyperparameters to explore.
-# The 'type' discriminator allows us to support other engines (e.g. 'ml') later.
 search_space:
   type: "ngram"
   
-  # Lists of values to iterate over (Grid Search)
+  # Iterates over these lists (Grid Search)
   min_ngram: [3, 4]
-  max_ngram: [4, 5, 6]
+  max_ngram: [6]
   
-  # Subtractive penalty for benign matches
-  benign_penalty_weight: [0.5, 1.0, 2.0]
-  
-  # Minimum score required to keep an n-gram
-  score_threshold: [0.05, 0.1, 0.15]
-  
-  # Minimum percentage of documents an n-gram must appear in to be considered
-  min_document_frequency: [0.005, 0.01]
-
-# 2. Selection Criteria
-# Defines how the 'best' run is chosen from the results.
-selection:
-  # The primary metric to maximize
-  target_metric: "recall"
-  
-  # Hard constraints: Runs failing these are disqualified immediately
-  min_precision: 0.95
-  max_false_positives: 0
-
-# 3. Data Splitting
-# Percentage of data reserved for the development set (evaluation)
-dev_split_ratio: 0.2
-
-# Random seed to ensure the split is deterministic across runs
-seed: 42
+  score_threshold: [0.05, 0.1, 0.2]
+  benign_penalty_weight: [1.0, 2.0]
+  min_document_frequency: [0.01] # 1% of documents
 ```
 
+#### Selection Criteria
 
+The `selection` section determines how the "best" run is automatically chosen from the results.
+
+`target_metric`: The primary metric to maximize (e.g. recall, precision, f1_score).
+
+Constraints: Hard limits for acceptance. For example, setting `max_false_positives: 0` ensures that the recommended configuration generates zero false positives on the evaluation se
+
+```yaml
+selection:
+  target_metric: "recall"
+  min_precision: 0.95
+  max_false_positives: 0
+```
+
+### Running the Optimizer
+
+The optimizer requires both adversarial and benign datasets. It is recommended to use prepared JSONL files for performance.
+
+```bash
+ygen optimize attacks.jsonl \
+  --benign-dataset control.jsonl \
+  --config optimization_config.yaml
+```
+
+The tool will cache the Train/Dev splits in a local `.optimize` folder to ensure that subsequent runs (with different grid parameters) remain comparable.
+
+### Interpreting Results
+
+The command outputs a summary of the best run found, including the specific metrics achieved on the held-out Dev set. Crucially, it prints a copy-pasteable CLI snippet for the generate command using the `--set` override syntax.
+
+```text
+BEST RUN: Iteration #5
+   Score (recall): 0.8500
+   Metrics: TP=85 FP=0 Prec=1.000 Rec=0.850
+   Parameters: {'min_ngram': 3, 'score_threshold': 0.1, ...}
+------------------------------------------------------------
+To generate rules with this configuration:
+ygen generate ... --set engine.min_ngram=3 --set engine.score_threshold=0.1 ...
+```
+
+You can then copy that line to generate your final production rules using the full dataset (Train + Dev).
 
 
 ## Configuration and Overrides
 
 Rule generation behavior is controlled through a combination of defaults, a configuration file, and CLI overrides. This model is designed to support both reproducible builds and rapid experimentation.
 
-The generation_config.yaml file defines default settings for the generate command only. It is ignored by prepare. The file is typically checked into version control to make rule generation auditable and repeatable.
+The `generation_config.yaml` file defines default settings for the generate command only. It is ignored by prepare. The file is typically checked into version control to make rule generation auditable and repeatable.
 
-When generating rules, configuration is resolved in the following order: built-in defaults, values from generation_config.yaml, and finally any CLI flags or --set overrides. CLI values always take precedence and apply only to the current run.
+When generating rules, configuration is resolved in the following order: built-in defaults, values from `generation_config.yaml`, and finally any CLI flags or `--set` overrides. CLI values always take precedence and apply only to the current run.
 
 ### Configuration Structure
 

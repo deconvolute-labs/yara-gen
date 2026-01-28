@@ -66,6 +66,18 @@ ygen generate ./data/jailbreaks.jsonl \
   --engine ngram
 ```
 
+### ygen optimize
+
+Automates the search for optimal hyperparameters by running a grid search against your datasets. It evaluates performance using a held-out development set and outputs a report containing the best configuration.
+
+The command prints a ready-to-use `ygen generate` command with the optimal flags applied, which can be directly copied to generate your rules.
+
+```bash
+ygen optimize ./data/jailbreaks.jsonl \
+  --benign-dataset ./data/benign_emails.jsonl \
+  --config optimization_config.yaml
+```
+
 ## Common Workflows
 
 **Using large benign corpora:** Prepare once, reuse across rule generations.
