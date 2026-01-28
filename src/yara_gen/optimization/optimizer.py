@@ -15,7 +15,7 @@ from yara_gen.models.optimization_config import OptimizationConfig
 from yara_gen.models.optimizer import OptimizationReport, OptimizationResult
 from yara_gen.models.text import DatasetType
 from yara_gen.optimization.evaluator import Evaluator
-from yara_gen.utils.logger import get_logger, log_header
+from yara_gen.utils.logger import get_logger
 
 logger = get_logger()
 
@@ -73,9 +73,9 @@ class Optimizer:
         combinations = self._generate_parameter_combinations()
         total_iterations = len(combinations)
 
-        log_header(logger, "Optimization Loop Started")
+        logger.info("Optimization Loop Started")
         logger.info(f"Search Space Size: {total_iterations} combinations")
-        logger.info(f"Results will be saved incrementally to: {self.output_path}")
+        logger.info(f"Results will be saved incrementally to: {self.output_path}\n")
 
         report = OptimizationReport(
             meta={
@@ -225,7 +225,7 @@ class Optimizer:
         # Format params for display (truncate if too long)
         param_str = ", ".join(f"{k}={v}" for k, v in params.items())
 
-        print(f"\n[ITER {current_idx}/{total}] ETA: {eta_str}")
+        print(f"[ITER {current_idx}/{total}] ETA: {eta_str}")
         print(f"Params: {{{param_str}}}")
 
     def _log_iteration_end(self, result: OptimizationResult) -> None:
@@ -233,8 +233,12 @@ class Optimizer:
         Prints the summary metrics for the completed iteration.
         """
         m = result.metrics
+        print("")
         print(
-            f"  [RESULT] TP: {m.tp} | FP: {m.fp} | "
+            f"[RESULT] TP: {m.tp} | FP: {m.fp} | "
             f"Prec: {m.precision:.3f} | Rec: {m.recall:.3f} | "
             f"F1: {m.f1_score:.3f} ({result.duration_seconds}s)"
         )
+        print("")
+        print("-" * 80)
+        print("")

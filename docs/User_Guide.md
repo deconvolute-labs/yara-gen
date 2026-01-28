@@ -72,8 +72,6 @@ All adapters support row-level filtering via the `--filter` flag. Filters use a 
 ygen prepare data.csv --output clean.jsonl --filter "label=jailbreak"
 ```
 
-
-
 ## Rule Generation with ygen generate
 
 The generate command extracts signatures from adversarial data, suppresses them against a benign control set, and emits YARA rules. This is the primary command you will use once datasets are prepared.
@@ -101,6 +99,53 @@ Generation defaults are read from `generation_config.yaml`. Any CLI flags or `--
 ### Iterative Tuning
 
 Rule generation is inherently iterative. You generate an initial rule set, inspect the output, adjust sensitivity or engine parameters, and regenerate. Prepared datasets make this loop fast and predictable.
+
+
+## TODO: Finding Hyperparameters with Optimize
+
+
+```yaml
+# Configuration for the 'optimize' command
+# This maps to the OptimizationConfig Pydantic model.
+
+# 1. Search Space
+# Defines the grid of hyperparameters to explore.
+# The 'type' discriminator allows us to support other engines (e.g. 'ml') later.
+search_space:
+  type: "ngram"
+  
+  # Lists of values to iterate over (Grid Search)
+  min_ngram: [3, 4]
+  max_ngram: [4, 5, 6]
+  
+  # Subtractive penalty for benign matches
+  benign_penalty_weight: [0.5, 1.0, 2.0]
+  
+  # Minimum score required to keep an n-gram
+  score_threshold: [0.05, 0.1, 0.15]
+  
+  # Minimum percentage of documents an n-gram must appear in to be considered
+  min_document_frequency: [0.005, 0.01]
+
+# 2. Selection Criteria
+# Defines how the 'best' run is chosen from the results.
+selection:
+  # The primary metric to maximize
+  target_metric: "recall"
+  
+  # Hard constraints: Runs failing these are disqualified immediately
+  min_precision: 0.95
+  max_false_positives: 0
+
+# 3. Data Splitting
+# Percentage of data reserved for the development set (evaluation)
+dev_split_ratio: 0.2
+
+# Random seed to ensure the split is deterministic across runs
+seed: 42
+```
+
+
 
 
 ## Configuration and Overrides

@@ -1,38 +1,22 @@
-# Configuration for the 'optimize' command
-# This maps to the OptimizationConfig Pydantic model.
-
-# 1. Search Space
-# Defines the grid of hyperparameters to explore.
-# The 'type' discriminator allows us to support other engines (e.g. 'ml') later.
 search_space:
   type: "ngram"
   
-  # Lists of values to iterate over (Grid Search)
   min_ngram: [3, 4]
-  max_ngram: [4, 5, 6]
+  score_threshold: [0.05, 0.1]
   
-  # Subtractive penalty for benign matches
-  benign_penalty_weight: [0.5, 1.0, 2.0]
+  max_ngram: [8, 9, 10]
+  benign_penalty_weight: [1.0]
   
-  # Minimum score required to keep an n-gram
-  score_threshold: [0.05, 0.1, 0.15]
-  
-  # Minimum percentage of documents an n-gram must appear in to be considered
-  min_document_frequency: [0.005, 0.01]
+  # Crucial for small datasets! 
+  # 0.01 = 1% (7 docs). 0.005 = 0.5% (3.5 docs).
+  min_document_frequency: [0.005]
 
-# 2. Selection Criteria
-# Defines how the 'best' run is chosen from the results.
 selection:
-  # The primary metric to maximize
-  target_metric: "recall"
+  target_metric: "f1_score" # A balanced metric for testing
   
-  # Hard constraints: Runs failing these are disqualified immediately
-  min_precision: 0.95
-  max_false_positives: 0
+  # Loose constraints so we don't reject everything during the test
+  min_precision: 0.1 
+  max_false_positives: 100
 
-# 3. Data Splitting
-# Percentage of data reserved for the development set (evaluation)
 dev_split_ratio: 0.2
-
-# Random seed to ensure the split is deterministic across runs
 seed: 42

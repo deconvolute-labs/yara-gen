@@ -1,5 +1,6 @@
 import argparse
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from yara_gen.adapters import get_adapter
@@ -10,7 +11,7 @@ from yara_gen.models.text import DatasetType
 from yara_gen.optimization.optimizer import Optimizer
 from yara_gen.optimization.splitter import DataSplitter
 from yara_gen.utils.config import load_config
-from yara_gen.utils.logger import get_logger, log_header, log_named_value
+from yara_gen.utils.logger import get_logger, log_named_value
 
 logger = get_logger()
 
@@ -128,14 +129,9 @@ def run(args: argparse.Namespace) -> None:
         config = _load_optimization_config(args.config)
 
         # Determine output path
-        timestamp = (
-            logger.handlers[0].baseFilename.split("_")[-1].replace(".log", "")
-            if logger.handlers and hasattr(logger.handlers[0], "baseFilename")
-            else "unknown"
-        )
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_file = args.output or Path(f"optimization_results_{timestamp}.json")
 
-        log_header(logger, "YARA Gen - Optimization Mode")
         log_named_value(logger, "Adversarial Source", args.input)
         log_named_value(logger, "Benign Source", args.benign_dataset)
         log_named_value(logger, "Config File", args.config)
@@ -170,38 +166,36 @@ def run(args: argparse.Namespace) -> None:
         # Post-Processing (Selection)
         best_run = _select_best_run(report, config.selection)
 
-        # TODO: This should be logged better
-        print("\n" + "=" * 60)
         if best_run:
             m = best_run.metrics
-            print(f"BEST RUN: Iteration #{best_run.iteration}")
-            print(
+            logger.info("=" * 60)
+            logger.info(f"BEST RUN: Iteration #{best_run.iteration}")
+            logger.info(
                 f"   Score ({config.selection.target_metric}): "
                 f"{getattr(m, config.selection.target_metric):.4f}"
             )
-            print(
+            logger.info(
                 f"   Metrics: TP={m.tp} FP={m.fp} "
                 f"Prec={m.precision:.3f} Rec={m.recall:.3f}"
             )
-            print(f"   Parameters: {best_run.parameters}")
-            print("-" * 60)
+            logger.info(f"   Parameters: {best_run.parameters}")
+            logger.info("-" * 60)
 
             # Generate CLI snippet
             # engine.min_ngram=4
             set_str = " ".join(
                 [f"engine.{k}={v}" for k, v in best_run.parameters.items()]
             )
-            print("To generate rules with this configuration:")
-            print(
+            logger.info("To generate rules with this configuration:")
+            logger.info(
                 f"yara-gen generate --input {args.input} "
                 f"--benign-dataset {args.benign_dataset} --set {set_str}"
             )
+            logger.info("=" * 60)
         else:
             logger.warning(
                 "No runs met the selection criteria (Constraints too strict?)"
             )
-
-        print("=" * 60 + "\n")
 
     except ConfigurationError as e:
         logger.error(f"Configuration Error: {e}")
