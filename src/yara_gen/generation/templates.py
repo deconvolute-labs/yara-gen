@@ -7,8 +7,9 @@ YARA_TEMPLATE = """/*
    Tool: https://github.com/deconvolute-labs/yara-gen
    Generated at: {{ timestamp }}
 */
+
 {% for rule in rules %}
-rule {{ rule.name }} : {{ rule.tags|join(' ') }}
+rule {{ rule.name }} : {{ rule.tags | join(' ') }}
 {
     meta:
         {%- for key, value in rule.metadata.items() %}

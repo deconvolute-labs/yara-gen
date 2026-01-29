@@ -1,10 +1,18 @@
 # Global Output Settings
-output_path: "data/tests/autopath-rules.yar"
+output_path: "data/rules.yar"
 
+# These appear after the rule name: rule x : tag1 tag2
 tags:
   - "generated"
-  - "category:injection"
-  
+  - "prompt_injection"
+
+metadata:
+  author: "Deconvolute Labs"
+  generator: "yara_gen"
+  category: "prompt_injection"
+  confidence: "high"
+  source_dataset: "dataset"
+
 adversarial_adapter:
   type: "jsonl"
   
