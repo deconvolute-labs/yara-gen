@@ -262,11 +262,8 @@ tags:
   - "prompt_injection"
 
 metadata:
-  author: "Deconvolute Labs"
-  generator: "yara_gen"
   category: "prompt_injection"
   confidence: "high"
-  source_dataset: "dataset"
 
 adversarial_adapter:
   type: "jsonl"
