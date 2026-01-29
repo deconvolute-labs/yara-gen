@@ -259,7 +259,11 @@ output_path: "rules.yar"
 
 tags:
   - "generated"
-  - "category:injection"
+  - "prompt_injection"
+
+metadata:
+  category: "prompt_injection"
+  confidence: "high"
 
 adversarial_adapter:
   type: "jsonl"

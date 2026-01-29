@@ -290,11 +290,16 @@ def run(args: argparse.Namespace) -> None:
         # Execute Extraction
         rules = engine.extract(adversarial=adv_stream, benign=benign_stream)
 
-        # Post-Processing: Apply Tags
-        if app_config.tags:
-            logger.debug(f"Applying tags to {len(rules)} rules: {app_config.tags}")
+        # Post-Processing: Apply Tags and Metadata
+        if app_config.tags or app_config.metadata:
+            logger.debug(
+                f"Applying global tags/metadata to {len(rules)} rules. "
+                f"Tags: {app_config.tags}, "
+                f"Metadata Keys: {list(app_config.metadata.keys())}"
+            )
             for rule in rules:
                 rule.tags.extend(app_config.tags)
+                rule.metadata.update(app_config.metadata)
 
         # Deduplication
         rules = _apply_deduplication(rules, args.existing_rules)

@@ -45,7 +45,7 @@ class RuleBuilder:
 
         return GeneratedRule(
             name=rule_name,
-            tags=["generated", "prompt_injection"],
+            tags=[],
             score=score_val,
             condition="any of them",
             strings=[
@@ -61,6 +61,7 @@ class RuleBuilder:
                 "description": META_DESC,
                 "date": rule_date or date.today().isoformat(),
                 "source": source,
+                "generator": "yara_gen",
                 "score": str(score_val),
             },
         )

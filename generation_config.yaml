@@ -1,10 +1,16 @@
 # Global Output Settings
-output_path: "data/tests/autopath-rules.yar"
+output_path: "data/rules.yar"
 
+# These appear after the rule name: rule x : tag1 tag2
 tags:
   - "generated"
-  - "category:injection"
-  
+  - "prompt_injection"
+
+# Appear in the field 'meta' as key-value pairs
+metadata:
+  category: "prompt_injection"
+  confidence: "high"
+
 adversarial_adapter:
   type: "jsonl"
   
